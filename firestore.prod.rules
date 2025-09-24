@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Production rules - strict security
+
+    // Users can only access their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId
+        && isValidUserProfile(request.resource.data);
+    }
+
+    // Trainee invitations - strict trainer ownership
+    match /trainee_invitations/{invitationId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.trainerId &&
+        isValidInvitation(request.resource.data);
+    }
+
+    // Trainees - strict trainer ownership
+    match /trainees/{traineeId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.trainerId &&
+        isValidTrainee(request.resource.data);
+    }
+
+    // Workouts - users can only access their own
+    match /workouts/{workoutId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidWorkout(request.resource.data);
+    }
+
+    // Sessions - trainers and trainees can access shared sessions
+    match /sessions/{sessionId} {
+      allow read, write: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId ||
+         request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId ||
+         request.auth.uid == request.resource.data.traineeId) &&
+        isValidSession(request.resource.data);
+    }
+
+    // Exercise library - read-only for all, write for admins
+    match /exercise_library/{exerciseId} {
+      allow read: if true;
+      allow write, create, delete: if request.auth != null &&
+        hasRole('admin');
+    }
+
+    // Admin collections - admin only
+    match /admin/{docId} {
+      allow read, write, create, delete: if request.auth != null &&
+        hasRole('admin');
+    }
+
+    // Default deny all other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for validation
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['email', 'firstName', 'lastName', 'userType']) &&
+             data.userType in ['trainer', 'trainee'] &&
+             data.email is string &&
+             data.firstName is string &&
+             data.lastName is string;
+    }
+
+    function isValidInvitation(data) {
+      return data.keys().hasAll(['trainerId', 'email', 'firstName', 'lastName', 'status']) &&
+             data.status == 'pending' &&
+             data.email.matches('.*@.*\\..*') &&
+             data.firstName is string &&
+             data.lastName is string;
+    }
+
+    function isValidTrainee(data) {
+      return data.keys().hasAll(['trainerId', 'email', 'firstName', 'lastName', 'status']) &&
+             data.status in ['pending', 'active', 'inactive', 'trial'] &&
+             data.email.matches('.*@.*\\..*') &&
+             data.totalSessions is number &&
+             data.totalSessions >= 0;
+    }
+
+    function isValidWorkout(data) {
+      return data.keys().hasAll(['userId', 'name', 'date', 'status']) &&
+             data.status in ['planned', 'in_progress', 'completed', 'skipped'] &&
+             data.name is string &&
+             data.date is string;
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['trainerId', 'traineeId', 'date', 'status']) &&
+             data.status in ['scheduled', 'in_progress', 'completed', 'cancelled'] &&
+             data.date is string;
+    }
+
+    function hasRole(role) {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+  }
+}
