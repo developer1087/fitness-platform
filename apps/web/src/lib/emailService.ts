@@ -134,15 +134,18 @@ export class EmailService {
     };
   }
 
-  // Send email (mock implementation)
+  // Send email (checks environment and uses appropriate service)
   static async sendEmail(emailTemplate: EmailTemplate): Promise<boolean> {
     try {
-      // In a real implementation, you would use a service like:
-      // - SendGrid
-      // - Mailgun
-      // - AWS SES
-      // - Nodemailer with SMTP
+      const emailServiceType = process.env.EMAIL_SERVICE_TYPE;
 
+      // Use production email service if configured
+      if (emailServiceType === 'production') {
+        const { ProductionEmailService } = await import('./productionEmailService');
+        return await ProductionEmailService.sendEmail(emailTemplate);
+      }
+
+      // Fallback to mock implementation for development
       console.log('=== EMAIL SENDING (MOCK) ===');
       console.log('To:', emailTemplate.to);
       console.log('Subject:', emailTemplate.subject);
@@ -152,8 +155,6 @@ export class EmailService {
       // Simulate email sending delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // For development, we'll just log the email and consider it "sent"
-      // In production, you would replace this with actual email sending logic
       return true;
 
     } catch (error) {
