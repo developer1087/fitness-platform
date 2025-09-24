@@ -1,7 +1,7 @@
 import { LoginScreen } from '../../components/auth/LoginScreen';
 import { useAuth } from '../../lib/auth';
 import { router } from 'expo-router';
-import { LoginFormData } from '@fitness-platform/shared-types';
+import { LoginFormData } from '../../lib/shared-types';
 
 export default function LoginPage() {
   const { signIn, loading } = useAuth();

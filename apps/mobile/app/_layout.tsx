@@ -7,7 +7,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '../lib/auth';
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  // Start with auth screens initially
+  initialRouteName: '(auth)',
 };
 
 export default function RootLayout() {

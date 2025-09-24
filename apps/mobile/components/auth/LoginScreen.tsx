@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, type LoginFormData } from '@fitness-platform/shared-types';
+import { loginSchema, type LoginFormData } from '../../lib/shared-types';
 
 interface LoginScreenProps {
   onLogin: (credentials: LoginFormData) => Promise<void>;
@@ -184,13 +184,12 @@ export function LoginScreen({
             <View style={styles.footer}>
               <Text style={styles.footerText}>
                 Don't have an account?{' '}
-                <Text
-                  style={styles.signUpText}
-                  onPress={onSignUp}
-                >
+              </Text>
+              <TouchableOpacity onPress={onSignUp} disabled={isLoading}>
+                <Text style={styles.signUpText}>
                   Sign up here
                 </Text>
-              </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -327,6 +326,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     paddingTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   footerText: {
     fontSize: 14,
