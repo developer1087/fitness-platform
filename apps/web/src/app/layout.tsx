@@ -1,4 +1,3 @@
-import React from 'react';
 import { AuthProvider } from '../hooks/useAuth';
 import './globals.css';
 
@@ -7,11 +6,11 @@ export const metadata = {
   description: 'Your comprehensive fitness tracking platform',
 };
 
-interface RootLayoutProps {
+export default function RootLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}) {
   return (
     <html lang="en">
       <body className="bg-gray-50 min-h-screen">
