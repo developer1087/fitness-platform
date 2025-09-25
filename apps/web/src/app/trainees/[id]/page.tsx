@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import TrainerLayout from '../../../components/TrainerLayout';
+import { useParams } from 'next/navigation';
 
 interface TraineeDetails {
   id: string;
@@ -16,7 +17,7 @@ interface TraineeDetails {
   goals: string[];
   lastSession?: string;
   totalSessions: number;
-  photoURL?: string;
+  profilePicture?: string;
   age?: number;
   height?: string;
   weight?: string;
@@ -68,7 +69,7 @@ const mockTraineeDetails: TraineeDetails = {
   goals: ['Weight Loss', 'General Fitness', 'Improved Endurance'],
   lastSession: '2024-09-20',
   totalSessions: 12,
-  photoURL: 'https://images.unsplash.com/photo-1494790108755-2616b612b55c?w=300&h=300&fit=crop&crop=face',
+  profilePicture: 'https://images.unsplash.com/photo-1494790108755-2616b612b55c?w=300&h=300&fit=crop&crop=face',
   age: 28,
   height: '5\'6"',
   weight: '140 lbs',
@@ -142,8 +143,10 @@ const mockTraineeDetails: TraineeDetails = {
   ]
 };
 
-export default function TraineeDetailPage({ params }: { params: { id: string } }) {
+export default function TraineeDetailPage() {
+  const params = useParams();
   const { user } = useAuth();
+  const id = params?.id as string;
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | 'payments' | 'notes'>('overview');
   const [trainee] = useState<TraineeDetails>(mockTraineeDetails);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -216,9 +219,9 @@ export default function TraineeDetailPage({ params }: { params: { id: string } }
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-start gap-6">
             <div className="w-24 h-24 bg-gray-200 rounded-full overflow-hidden">
-              {trainee.photoURL ? (
+              {trainee.profilePicture ? (
                 <img
-                  src={trainee.photoURL}
+                  src={trainee.profilePicture}
                   alt={`${trainee.firstName} ${trainee.lastName}`}
                   className="w-full h-full object-cover"
                 />

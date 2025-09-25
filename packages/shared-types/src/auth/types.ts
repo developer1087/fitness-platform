@@ -24,14 +24,13 @@ export interface UserPreferences {
   workoutReminders: boolean;
   emailNotifications: boolean;
   pushNotifications: boolean;
-  privacySettings: PrivacySettings;
+  privacySettings: {
+    profileVisibility: 'public' | 'friends' | 'private';
+    workoutDataSharing: boolean;
+    progressSharing: boolean;
+  };
 }
 
-export interface PrivacySettings {
-  profileVisibility: 'public' | 'friends' | 'private';
-  workoutDataSharing: boolean;
-  progressSharing: boolean;
-}
 
 export type UserRole = 'user' | 'trainer' | 'admin';
 

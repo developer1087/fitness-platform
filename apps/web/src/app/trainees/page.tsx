@@ -12,6 +12,7 @@ import { TraineeInvitationFormData, Trainee } from '@fitness-platform/shared-typ
 const mockTrainees: Trainee[] = [
   {
     id: '1',
+    trainerId: 'trainer-1',
     firstName: 'Sarah',
     lastName: 'Johnson',
     email: 'sarah.johnson@email.com',
@@ -22,10 +23,11 @@ const mockTrainees: Trainee[] = [
     goals: ['Weight Loss', 'General Fitness'],
     lastSession: '2024-09-20',
     totalSessions: 12,
-    photoURL: 'https://images.unsplash.com/photo-1494790108755-2616b612b55c?w=150&h=150&fit=crop&crop=face'
+    profilePicture: 'https://images.unsplash.com/photo-1494790108755-2616b612b55c?w=150&h=150&fit=crop&crop=face'
   },
   {
     id: '2',
+    trainerId: 'trainer-1',
     firstName: 'Mike',
     lastName: 'Chen',
     email: 'mike.chen@email.com',
@@ -36,10 +38,11 @@ const mockTrainees: Trainee[] = [
     goals: ['Muscle Gain', 'Strength Training'],
     lastSession: '2024-09-19',
     totalSessions: 28,
-    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
   },
   {
     id: '3',
+    trainerId: 'trainer-1',
     firstName: 'Alex',
     lastName: 'Rivera',
     email: 'alex.rivera@email.com',
@@ -50,10 +53,11 @@ const mockTrainees: Trainee[] = [
     goals: ['Athletic Performance', 'Endurance'],
     lastSession: '2024-09-18',
     totalSessions: 6,
-    photoURL: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+    profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
   },
   {
     id: '4',
+    trainerId: 'trainer-1',
     firstName: 'Emma',
     lastName: 'Wilson',
     email: 'emma.wilson@email.com',
