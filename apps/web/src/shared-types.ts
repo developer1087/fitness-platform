@@ -1,6 +1,9 @@
 // Local shared-types for deployment compatibility
 export * from './shared-types/auth/types';
 export * from './shared-types/auth/schemas';
+
+// Explicit re-exports to ensure Vercel build picks them up
+export { resetPasswordSchema, type ResetPasswordFormData } from './shared-types/auth/schemas';
 export * from './shared-types/workout/types';
 export * from './shared-types/nutrition/types';
 export * from './shared-types/progress/types';
