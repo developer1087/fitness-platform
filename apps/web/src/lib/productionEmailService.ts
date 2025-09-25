@@ -39,12 +39,11 @@ export class ProductionEmailService {
           port: 587,
           secure: false,
           auth: {
-            type: 'OAuth2',
             user: email,
             clientId: clientId,
             clientSecret: clientSecret,
             refreshToken: refreshToken,
-          },
+          } as any,
         },
         fromEmail: email,
         fromName: process.env.FROM_NAME || 'Fitness Platform',
