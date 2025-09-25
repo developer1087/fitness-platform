@@ -144,7 +144,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
   };
 
-  return React.createElement(AuthContext.Provider, { value }, children);
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 // Hook to use auth context

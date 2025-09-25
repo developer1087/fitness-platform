@@ -1,15 +1,15 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/api/email/invite/route": "app/api/email/invite/route.js",
-  "/auth/forgot-password/page": "app/auth/forgot-password/page.js",
   "/auth/login/page": "app/auth/login/page.js",
   "/page": "app/page.js",
   "/auth/signup/page": "app/auth/signup/page.js",
+  "/auth/forgot-password/page": "app/auth/forgot-password/page.js",
   "/payments/page": "app/payments/page.js",
   "/profile/page": "app/profile/page.js",
+  "/trainees/page": "app/trainees/page.js",
   "/schedule/page": "app/schedule/page.js",
   "/sessions/page": "app/sessions/page.js",
   "/trainees/[id]/page": "app/trainees/[id]/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/trainees/page": "app/trainees/page.js"
+  "/signup/page": "app/signup/page.js"
 }
