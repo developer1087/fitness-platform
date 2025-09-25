@@ -22,6 +22,7 @@ jobs:
         cache-dependency-path: |
           package-lock.json
           apps/web/package-lock.json
+          packages/shared-types/package-lock.json
 
     - name: Install dependencies
       run: npm ci
@@ -34,6 +35,11 @@ jobs:
     - name: Install mobile dependencies
       run: |
         cd apps/mobile
+        npm ci
+
+    - name: Install shared-types dependencies
+      run: |
+        cd packages/shared-types
         npm ci
 
     - name: Run linting

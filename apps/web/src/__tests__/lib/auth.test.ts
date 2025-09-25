@@ -105,10 +105,10 @@ describe('authService', () => {
     });
 
     it('should handle Firebase auth errors', async () => {
-      const firebaseError = {
-        code: 'auth/user-not-found',
-        message: 'User not found',
-      };
+      const firebaseError = new Error('User not found');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/user-not-found';
+
       mockSignInWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -181,10 +181,10 @@ describe('authService', () => {
     });
 
     it('should throw error if email already exists', async () => {
-      const firebaseError = {
-        code: 'auth/email-already-in-use',
-        message: 'Email already in use',
-      };
+      const firebaseError = new Error('Email already in use');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/email-already-in-use';
+
       mockCreateUserWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -199,10 +199,10 @@ describe('authService', () => {
     });
 
     it('should handle weak password errors', async () => {
-      const firebaseError = {
-        code: 'auth/weak-password',
-        message: 'Password should be at least 6 characters',
-      };
+      const firebaseError = new Error('Password should be at least 6 characters');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/weak-password';
+
       mockCreateUserWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -248,10 +248,10 @@ describe('authService', () => {
     });
 
     it('should throw error for invalid email', async () => {
-      const firebaseError = {
-        code: 'auth/user-not-found',
-        message: 'User not found',
-      };
+      const firebaseError = new Error('User not found');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/user-not-found';
+
       mockSendPasswordResetEmail.mockRejectedValue(firebaseError);
 
       const email = 'nonexistent@example.com';
