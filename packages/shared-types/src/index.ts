@@ -1,9 +1,37 @@
-// Auth types
+// Auth types - using auth as primary source for User, AuthState, etc.
 export * from './auth/types';
 export * from './auth/schemas';
 
-// User types
-export * from './user/types';
+// User types - exclude conflicting types
+export type {
+  UserProfile as DetailedUserProfile,
+  PhysicalMeasurement,
+  FitnessLevel,
+  ActivityLevel,
+  FitnessGoal,
+  FitnessGoalType,
+  GoalTarget,
+  WorkoutPreferences,
+  WorkoutType,
+  DurationPreference,
+  FrequencyPreference,
+  TimeSlot,
+  EquipmentType,
+  WorkoutLocation,
+  Injury,
+  UserPreferences as DetailedUserPreferences,
+  PrivacySettings,
+  User as DetailedUser,
+  UserRole as DetailedUserRole,
+  AccountStatus,
+  SubscriptionTier,
+  UserAnalytics,
+  UserConnection,
+  UserAchievement,
+  TrainerProfile,
+  Certification,
+  TrainerAvailability
+} from './user/types';
 
 // Workout types
 export * from './workout/types';

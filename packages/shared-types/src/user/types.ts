@@ -246,13 +246,6 @@ export interface UserAnalytics {
   lastActiveDate: Date;
 }
 
-// Authentication state
-export interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-}
-
 // Social Features
 export interface UserConnection {
   id: string;

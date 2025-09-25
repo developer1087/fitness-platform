@@ -221,7 +221,7 @@ export interface Comment {
 
   // Engagement
   likes: number;
-  replies: number;
+  replyCount: number;
 
   // Hierarchy
   parentCommentId?: string;

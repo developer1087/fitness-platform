@@ -1,6 +1,8 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut,
   sendPasswordResetEmail,
   updateProfile,
@@ -17,6 +19,41 @@ export const authService = {
     const { email, password } = credentials;
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return await this.createUserObject(userCredential.user);
+  },
+
+  // Sign in with Google
+  async signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    const firebaseUser = userCredential.user;
+
+    // Check if this is a new user and create profile if needed
+    const existingProfile = await this.getUserProfile(firebaseUser.uid);
+
+    if (!existingProfile) {
+      // Extract name from Google profile
+      const displayName = firebaseUser.displayName || '';
+      const [firstName = '', lastName = ''] = displayName.split(' ');
+
+      const userProfile: UserProfile = {
+        firstName,
+        lastName,
+        preferences: {
+          workoutReminders: true,
+          emailNotifications: true,
+          pushNotifications: true,
+          privacySettings: {
+            profileVisibility: 'friends',
+            workoutDataSharing: false,
+            progressSharing: false,
+          },
+        },
+      };
+
+      await this.createUserProfile(firebaseUser.uid, userProfile);
+    }
+
+    return await this.createUserObject(firebaseUser);
   },
 
   // Sign up with email and password

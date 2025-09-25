@@ -26,24 +26,32 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Connect to emulators in development
+// Connect to emulators in development - must be done before any operations
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  // Check if we're in the browser and not already connected
-  if (!auth.config.emulator) {
+  // Use a flag to ensure we only connect once
+  if (!(globalThis as any).__FIREBASE_EMULATOR_CONNECTED__) {
     try {
       connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
       console.log('✅ Connected to Auth emulator');
     } catch (error) {
-      console.log('Auth emulator already connected');
+      console.log('Auth emulator connection:', error);
     }
-  }
 
-  // For Firestore, we need to check if it's already connected differently
-  try {
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    console.log('✅ Connected to Firestore emulator');
-  } catch (error) {
-    console.log('Firestore emulator already connected');
+    try {
+      connectFirestoreEmulator(db, 'localhost', 8081);
+      console.log('✅ Connected to Firestore emulator');
+    } catch (error) {
+      console.log('Firestore emulator connection:', error);
+    }
+
+    try {
+      connectStorageEmulator(storage, 'localhost', 9199);
+      console.log('✅ Connected to Storage emulator');
+    } catch (error) {
+      console.log('Storage emulator connection:', error);
+    }
+
+    (globalThis as any).__FIREBASE_EMULATOR_CONNECTED__ = true;
   }
 }
 

@@ -3,9 +3,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  updateProfile
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
 // Mock Firebase functions
 jest.mock('firebase/auth');
@@ -15,24 +16,56 @@ const mockSignInWithEmailAndPassword = signInWithEmailAndPassword as jest.Mocked
 const mockCreateUserWithEmailAndPassword = createUserWithEmailAndPassword as jest.MockedFunction<typeof createUserWithEmailAndPassword>;
 const mockSignOut = signOut as jest.MockedFunction<typeof signOut>;
 const mockSendPasswordResetEmail = sendPasswordResetEmail as jest.MockedFunction<typeof sendPasswordResetEmail>;
+const mockUpdateProfile = updateProfile as jest.MockedFunction<typeof updateProfile>;
 const mockSetDoc = setDoc as jest.MockedFunction<typeof setDoc>;
+const mockGetDoc = getDoc as jest.MockedFunction<typeof getDoc>;
+const mockUpdateDoc = updateDoc as jest.MockedFunction<typeof updateDoc>;
+const mockDoc = doc as jest.MockedFunction<typeof doc>;
 
 describe('authService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Setup default mocks
+    mockDoc.mockReturnValue({} as any);
+    mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        firstName: 'Test',
+        lastName: 'User',
+        preferences: {
+          workoutReminders: true,
+          emailNotifications: true,
+          pushNotifications: true,
+          privacySettings: {
+            profileVisibility: 'friends',
+            workoutDataSharing: false,
+            progressSharing: false,
+          },
+        },
+      }),
+    } as any);
+    mockSetDoc.mockResolvedValue(undefined);
+    mockUpdateDoc.mockResolvedValue(undefined);
+    mockUpdateProfile.mockResolvedValue(undefined);
   });
 
   describe('signIn', () => {
     it('should sign in user with valid credentials', async () => {
-      const mockUser = {
+      const mockFirebaseUser = {
         uid: 'test-uid',
         email: 'test@example.com',
         displayName: 'Test User',
+        photoURL: null,
         emailVerified: true,
+        metadata: {
+          creationTime: '2023-01-01T00:00:00.000Z',
+          lastSignInTime: '2023-01-01T00:00:00.000Z',
+        },
       };
 
       const mockUserCredential = {
-        user: mockUser,
+        user: mockFirebaseUser,
       };
 
       mockSignInWithEmailAndPassword.mockResolvedValue(mockUserCredential as any);
@@ -49,7 +82,14 @@ describe('authService', () => {
         credentials.email,
         credentials.password
       );
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(expect.objectContaining({
+        uid: 'test-uid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        emailVerified: true,
+        role: 'user',
+        profile: expect.any(Object),
+      }));
     });
 
     it('should throw error for invalid credentials', async () => {
@@ -65,10 +105,10 @@ describe('authService', () => {
     });
 
     it('should handle Firebase auth errors', async () => {
-      const firebaseError = {
-        code: 'auth/user-not-found',
-        message: 'User not found',
-      };
+      const firebaseError = new Error('User not found');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/user-not-found';
+
       mockSignInWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -82,19 +122,23 @@ describe('authService', () => {
 
   describe('signUp', () => {
     it('should create user account with valid data', async () => {
-      const mockUser = {
+      const mockFirebaseUser = {
         uid: 'new-user-uid',
         email: 'newuser@example.com',
-        displayName: null,
+        displayName: 'John Doe',
+        photoURL: null,
         emailVerified: false,
+        metadata: {
+          creationTime: '2023-01-01T00:00:00.000Z',
+          lastSignInTime: '2023-01-01T00:00:00.000Z',
+        },
       };
 
       const mockUserCredential = {
-        user: mockUser,
+        user: mockFirebaseUser,
       };
 
       mockCreateUserWithEmailAndPassword.mockResolvedValue(mockUserCredential as any);
-      mockSetDoc.mockResolvedValue(undefined);
 
       const credentials = {
         email: 'newuser@example.com',
@@ -112,26 +156,35 @@ describe('authService', () => {
         credentials.password
       );
 
+      expect(mockUpdateProfile).toHaveBeenCalledWith(
+        mockFirebaseUser,
+        { displayName: 'John Doe' }
+      );
+
       expect(mockSetDoc).toHaveBeenCalledWith(
         expect.any(Object), // doc reference
         expect.objectContaining({
           firstName: 'John',
           lastName: 'Doe',
-          email: 'newuser@example.com',
           role: 'user',
-          accountStatus: 'active',
-          subscriptionTier: 'free',
+          createdAt: expect.any(String),
+          lastLoginAt: expect.any(String),
         })
       );
 
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(expect.objectContaining({
+        uid: 'new-user-uid',
+        email: 'newuser@example.com',
+        role: 'user',
+        profile: expect.any(Object),
+      }));
     });
 
     it('should throw error if email already exists', async () => {
-      const firebaseError = {
-        code: 'auth/email-already-in-use',
-        message: 'Email already in use',
-      };
+      const firebaseError = new Error('Email already in use');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/email-already-in-use';
+
       mockCreateUserWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -146,10 +199,10 @@ describe('authService', () => {
     });
 
     it('should handle weak password errors', async () => {
-      const firebaseError = {
-        code: 'auth/weak-password',
-        message: 'Password should be at least 6 characters',
-      };
+      const firebaseError = new Error('Password should be at least 6 characters');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/weak-password';
+
       mockCreateUserWithEmailAndPassword.mockRejectedValue(firebaseError);
 
       const credentials = {
@@ -170,7 +223,7 @@ describe('authService', () => {
 
       await authService.signOut();
 
-      expect(mockSignOut).toHaveBeenCalledWith(expect.any(Object));
+      expect(mockSignOut).toHaveBeenCalledWith({});
     });
 
     it('should handle sign out errors', async () => {
@@ -189,16 +242,16 @@ describe('authService', () => {
       await authService.resetPassword(email);
 
       expect(mockSendPasswordResetEmail).toHaveBeenCalledWith(
-        expect.any(Object), // auth instance
+        {}, // auth instance
         email
       );
     });
 
     it('should throw error for invalid email', async () => {
-      const firebaseError = {
-        code: 'auth/user-not-found',
-        message: 'User not found',
-      };
+      const firebaseError = new Error('User not found');
+      firebaseError.name = 'FirebaseError';
+      (firebaseError as any).code = 'auth/user-not-found';
+
       mockSendPasswordResetEmail.mockRejectedValue(firebaseError);
 
       const email = 'nonexistent@example.com';
@@ -215,20 +268,26 @@ describe('authService', () => {
       const userData = {
         firstName: 'John',
         lastName: 'Doe',
-        email: 'john@example.com',
+        preferences: {
+          workoutReminders: true,
+          emailNotifications: true,
+          pushNotifications: true,
+          privacySettings: {
+            profileVisibility: 'friends',
+            workoutDataSharing: false,
+            progressSharing: false,
+          },
+        },
       };
 
       await authService.createUserProfile(userId, userData);
 
       expect(mockSetDoc).toHaveBeenCalledWith(
-        expect.any(Object), // doc reference
+        {}, // doc reference
         expect.objectContaining({
           firstName: 'John',
           lastName: 'Doe',
-          email: 'john@example.com',
           role: 'user',
-          accountStatus: 'active',
-          subscriptionTier: 'free',
           createdAt: expect.any(String),
           lastLoginAt: expect.any(String),
         })

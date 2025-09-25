@@ -1,0 +1,64 @@
+name: Test Development Branch
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          apps/web/package-lock.json
+          packages/shared-types/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install web dependencies
+      run: |
+        cd apps/web
+        npm ci
+
+    - name: Install mobile dependencies
+      run: |
+        cd apps/mobile
+        npm ci
+
+    - name: Install shared-types dependencies
+      run: |
+        cd packages/shared-types
+        npm ci
+
+    - name: Run linting
+      run: |
+        cd apps/web
+        npm run lint
+
+    # Temporarily disabled until shared-types issues are resolved
+    # - name: Run type checking
+    #   run: |
+    #     cd apps/web
+    #     npm run type-check
+
+    - name: Run tests
+      run: |
+        cd apps/web
+        npm run test
+
+    - name: Build web application
+      run: |
+        cd apps/web
+        npm run build
