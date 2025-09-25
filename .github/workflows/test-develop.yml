@@ -48,7 +48,9 @@ jobs:
     #     npm run type-check
 
     - name: Run tests
-      run: npm run test
+      run: |
+        cd apps/web
+        npm run test
 
     - name: Build web application
       run: |
