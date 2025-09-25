@@ -3,7 +3,7 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, authService } from '../lib';
-import type { User, AuthState, LoginCredentials, SignupCredentials } from '@fitness-platform/shared-types';
+import type { User, AuthState, LoginCredentials, SignupCredentials } from '../../shared-types';
 
 // Auth Context
 interface AuthContextType extends AuthState {

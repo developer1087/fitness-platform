@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TraineeService } from '../../lib/traineeService';
-import { TraineeInvitationRecord, SignupFormData, signupSchema } from '@fitness-platform/shared-types';
+import { TraineeInvitationRecord, SignupFormData, signupSchema } from '../../shared-types';
 
 function SignupContent() {
   const searchParams = useSearchParams();

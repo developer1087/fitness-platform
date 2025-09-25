@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TraineeInvitationFormData, traineeInvitationSchema } from '../../../mobile/lib/shared-types';
+import { TraineeInvitationFormData, traineeInvitationSchema } from '../shared-types';
 
 interface AddTraineeModalProps {
   isOpen: boolean;

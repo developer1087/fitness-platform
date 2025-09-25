@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import type { User, LoginCredentials, SignupCredentials, UserProfile } from '@fitness-platform/shared-types';
+import type { User, LoginCredentials, SignupCredentials, UserProfile } from '../../shared-types';
 
 // Auth service functions
 export const authService = {

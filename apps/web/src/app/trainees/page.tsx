@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import TrainerLayout from '../../components/TrainerLayout';
 import AddTraineeModal from '../../components/AddTraineeModal';
 import { TraineeService } from '../../lib/traineeService';
-import { TraineeInvitationFormData, Trainee } from '@fitness-platform/shared-types';
+import { TraineeInvitationFormData, Trainee } from '../../shared-types';
 
 // Remove duplicate interface - using the one from shared-types
 

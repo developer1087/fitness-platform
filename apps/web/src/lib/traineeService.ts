@@ -18,7 +18,7 @@ import {
   TraineeInvitationRecord,
   Trainee,
   UserProfile
-} from '../../../mobile/lib/shared-types';
+} from '../shared-types';
 // Email sending is handled server-side via API route to avoid bundling Node-only modules in the client
 
 // Collections

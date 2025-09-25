@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../hooks/useAuth';
-import { signupSchema, type SignupFormData } from '@fitness-platform/shared-types';
+import { signupSchema, type SignupFormData } from '../../shared-types';
 
 export function SignupForm() {
   const { signUp, loading, error } = useAuth();

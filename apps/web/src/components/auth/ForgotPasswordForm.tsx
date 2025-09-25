@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../hooks/useAuth';
-import { resetPasswordSchema, type ResetPasswordFormData } from '@fitness-platform/shared-types';
+import { resetPasswordSchema, type ResetPasswordFormData } from '../../shared-types';
 
 export function ForgotPasswordForm() {
   const { resetPassword, loading, error } = useAuth();
