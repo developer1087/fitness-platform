@@ -19,7 +19,7 @@ import {
   Trainee,
   UserProfile
 } from '../../../mobile/lib/shared-types';
-import { EmailService } from './emailService';
+// Email sending is handled server-side via API route to avoid bundling Node-only modules in the client
 
 // Collections
 const TRAINEE_INVITATIONS_COLLECTION = 'trainee_invitations';
@@ -107,23 +107,28 @@ export class TraineeService {
 
       await addDoc(collection(db, TRAINEES_COLLECTION), traineeRecord);
 
-      // Send invitation email
+      // Send invitation email via server API (non-blocking for UX)
       try {
-        // Get trainer's name for the email
         const trainerName = auth.currentUser?.displayName || 'Your Trainer';
-
-        const emailSent = await EmailService.sendTraineeInvitation(
-          invitationData.email,
-          trainerName,
-          invitationData.firstName,
-          inviteToken
-        );
-
-        if (!emailSent) {
-          console.warn('Email invitation could not be sent, but trainee was added successfully');
-        }
+        void fetch('/api/email/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            traineeEmail: invitationData.email,
+            trainerName,
+            traineeFirstName: invitationData.firstName,
+            invitationToken: inviteToken,
+          }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const msg = await res.text();
+            console.warn('Invitation email API responded with non-OK:', msg);
+          }
+        }).catch((err) => {
+          console.warn('Invitation email API call failed:', err);
+        });
       } catch (emailError) {
-        console.error('Error sending invitation email:', emailError);
+        console.error('Error initiating invitation email:', emailError);
         // Don't fail the entire operation if email fails
       }
 
@@ -188,8 +193,38 @@ export class TraineeService {
   // Delete trainee
   static async deleteTrainee(traineeId: string): Promise<void> {
     try {
-      const docRef = doc(db, TRAINEES_COLLECTION, traineeId);
-      await deleteDoc(docRef);
+      // Fetch trainee to get trainerId and email for invitation cleanup
+      const traineeRef = doc(db, TRAINEES_COLLECTION, traineeId);
+      const traineeSnap = await getDoc(traineeRef);
+
+      if (traineeSnap.exists()) {
+        const traineeData = traineeSnap.data() as any;
+        const trainerId = traineeData.trainerId as string | undefined;
+        const email = traineeData.email as string | undefined;
+
+        // Delete the trainee document first
+        await deleteDoc(traineeRef);
+
+        // If we have identifiers, also delete ALL invitations for this trainee email (any status)
+        if (trainerId && email) {
+          const allInvitesQuery = query(
+            collection(db, TRAINEE_INVITATIONS_COLLECTION),
+            where('trainerId', '==', trainerId),
+            where('email', '==', email)
+          );
+          const allInvitesSnap = await getDocs(allInvitesQuery);
+          const deletePromises: Promise<void>[] = [];
+          allInvitesSnap.forEach((inviteDoc) => {
+            deletePromises.push(deleteDoc(doc(db, TRAINEE_INVITATIONS_COLLECTION, inviteDoc.id)));
+          });
+          if (deletePromises.length > 0) {
+            await Promise.all(deletePromises);
+          }
+        }
+      } else {
+        // If no trainee doc, nothing to delete
+        return;
+      }
     } catch (error) {
       console.error('Error deleting trainee:', error);
       throw error;

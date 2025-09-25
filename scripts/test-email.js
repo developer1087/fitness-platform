@@ -15,6 +15,21 @@ const path = require('path');
 // Load environment variables from .env.local
 config({ path: path.join(__dirname, '..', '.env.local') });
 
+console.log('🔧 Loading environment variables...');
+console.log('EMAIL_SERVICE_TYPE:', process.env.EMAIL_SERVICE_TYPE);
+console.log('EMAIL_PROVIDER:', process.env.EMAIL_PROVIDER);
+console.log('FROM_NAME:', process.env.FROM_NAME);
+
+if (process.env.EMAIL_PROVIDER === 'brevo') {
+  console.log('BREVO_EMAIL:', process.env.BREVO_EMAIL ? '✓ Set' : '❌ Missing');
+  console.log('BREVO_API_KEY:', process.env.BREVO_API_KEY ? '✓ Set' : '❌ Missing');
+} else if (process.env.EMAIL_PROVIDER === 'gmail') {
+  console.log('GMAIL_EMAIL:', process.env.GMAIL_EMAIL ? '✓ Set' : '❌ Missing');
+  console.log('GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? '✓ Set' : '❌ Missing');
+}
+
+console.log('');
+
 async function testEmailService() {
   try {
     console.log('🧪 Testing Production Email Service...\n');

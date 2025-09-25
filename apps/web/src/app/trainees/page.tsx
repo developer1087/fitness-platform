@@ -114,6 +114,18 @@ export default function TraineesPage() {
     }
   };
 
+  const handleDeleteTrainee = async (traineeId: string) => {
+    try {
+      const confirmed = typeof window !== 'undefined' ? window.confirm('Delete this trainee? This action cannot be undone.') : true;
+      if (!confirmed) return;
+      await TraineeService.deleteTrainee(traineeId);
+      await loadTrainees();
+    } catch (err) {
+      console.error('Error deleting trainee:', err);
+      setError('Failed to delete trainee. Please try again.');
+    }
+  };
+
   if (!user) {
     return <div className="flex items-center justify-center h-64">
       <div className="text-center">
@@ -304,6 +316,13 @@ export default function TraineesPage() {
                       </a>
                       <button className="flex-1 bg-green-50 text-green-700 px-3 py-2 rounded-md hover:bg-green-100 transition-colors text-sm font-medium">
                         Schedule
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTrainee(trainee.id)}
+                        className="px-3 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 transition-colors text-sm font-medium"
+                        aria-label="Delete trainee"
+                      >
+                        Delete
                       </button>
                       <button className="px-3 py-2 text-gray-400 hover:text-gray-600 transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
