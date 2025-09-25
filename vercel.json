@@ -2,5 +2,15 @@
   "version": 2,
   "buildCommand": "cd apps/web && npm run build",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "npm install && cd apps/web && npm install"
+  "installCommand": "cd apps/web && npm install --legacy-peer-deps",
+  "build": {
+    "env": {
+      "NODEJS_VERSION": "20.19.4"
+    }
+  },
+  "functions": {
+    "apps/web/src/app/api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
 }
