@@ -1,3 +1,4 @@
+// Server-only imports for email functionality
 import nodemailer from 'nodemailer';
 import { EmailTemplate } from './emailService';
 
@@ -22,22 +23,53 @@ export class ProductionEmailService {
   private static transporter: nodemailer.Transporter | null = null;
   private static config: EmailServiceConfig | null = null;
 
-  // Gmail SMTP Configuration
-  static getGmailConfig(email: string, appPassword: string): EmailServiceConfig {
-    return {
-      provider: 'gmail',
-      smtp: {
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // true for 465, false for other ports
-        auth: {
-          user: email,
-          pass: appPassword, // Use App Password, not regular password
+  // Gmail SMTP Configuration (OAuth2)
+  static getGmailConfig(email: string, appPassword?: string): EmailServiceConfig {
+    // Check for OAuth2 credentials first
+    const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
+    const refreshToken = process.env.GMAIL_OAUTH_REFRESH_TOKEN;
+
+    // If OAuth2 credentials are provided, use OAuth2
+    if (clientId && clientSecret && refreshToken) {
+      return {
+        provider: 'gmail',
+        smtp: {
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            type: 'OAuth2',
+            user: email,
+            clientId: clientId,
+            clientSecret: clientSecret,
+            refreshToken: refreshToken,
+          },
         },
-      },
-      fromEmail: email,
-      fromName: process.env.FROM_NAME || 'Fitness Platform',
-    };
+        fromEmail: email,
+        fromName: process.env.FROM_NAME || 'Fitness Platform',
+      };
+    }
+
+    // Fallback to App Password (if provided)
+    if (appPassword) {
+      return {
+        provider: 'gmail',
+        smtp: {
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: email,
+            pass: appPassword,
+          },
+        },
+        fromEmail: email,
+        fromName: process.env.FROM_NAME || 'Fitness Platform',
+      };
+    }
+
+    throw new Error('Gmail requires either OAuth2 credentials or App Password');
   }
 
   // Brevo (formerly Sendinblue) SMTP Configuration
@@ -49,7 +81,7 @@ export class ProductionEmailService {
         port: 587,
         secure: false,
         auth: {
-          user: email,
+          user: process.env.BREVO_LOGIN_EMAIL || email, // Use Brevo login email, not sender email
           pass: apiKey, // Use your Brevo SMTP key
         },
       },
@@ -134,7 +166,7 @@ export class ProductionEmailService {
     }
 
     this.config = config;
-    this.transporter = nodemailer.createTransporter(config.smtp);
+    this.transporter = nodemailer.createTransport(config.smtp);
 
     // Verify connection configuration
     try {

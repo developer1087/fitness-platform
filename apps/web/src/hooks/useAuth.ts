@@ -8,6 +8,7 @@ import type { User, AuthState, LoginCredentials, SignupCredentials } from '@fitn
 // Auth Context
 interface AuthContextType extends AuthState {
   signIn: (credentials: LoginCredentials) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (credentials: SignupCredentials) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -66,6 +67,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authService.signInWithGoogle();
+      // User state will be updated by onAuthStateChanged
+      // Navigate to dashboard on successful login
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign in failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signUp = async (credentials: SignupCredentials) => {
     try {
       setLoading(true);
@@ -113,6 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     error,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     resetPassword,
