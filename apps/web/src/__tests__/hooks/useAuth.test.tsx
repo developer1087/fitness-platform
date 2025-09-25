@@ -19,6 +19,33 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe('useAuth hook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Setup auth service mocks
+    mockAuthService.createUserObject.mockImplementation(async (firebaseUser) => ({
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName,
+      photoURL: firebaseUser.photoURL,
+      emailVerified: firebaseUser.emailVerified,
+      createdAt: '2023-01-01T00:00:00.000Z',
+      lastLoginAt: '2023-01-01T00:00:00.000Z',
+      role: 'user',
+      profile: {
+        firstName: 'Test',
+        lastName: 'User',
+        preferences: {
+          workoutReminders: true,
+          emailNotifications: true,
+          pushNotifications: true,
+          privacySettings: {
+            profileVisibility: 'friends',
+            workoutDataSharing: false,
+            progressSharing: false,
+          },
+        },
+      },
+    }));
+
     // Mock onAuthStateChanged to immediately call the callback with null (no user)
     mockOnAuthStateChanged.mockImplementation((auth, callback) => {
       callback(null);
@@ -37,18 +64,31 @@ describe('useAuth hook', () => {
   });
 
   it('should sign in user successfully', async () => {
-    const mockUser = {
+    const mockFirebaseUser = {
       uid: 'test-uid',
       email: 'test@example.com',
       displayName: 'Test User',
+      photoURL: null,
       emailVerified: true,
     };
 
-    mockAuthService.signIn.mockResolvedValue(mockUser);
+    const expectedUser = {
+      uid: 'test-uid',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      photoURL: null,
+      emailVerified: true,
+      createdAt: '2023-01-01T00:00:00.000Z',
+      lastLoginAt: '2023-01-01T00:00:00.000Z',
+      role: 'user',
+      profile: expect.any(Object),
+    };
 
-    // Mock onAuthStateChanged to return the user after sign in
+    mockAuthService.signIn.mockResolvedValue(expectedUser);
+
+    // Mock onAuthStateChanged to return the firebase user after sign in
     mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      setTimeout(() => callback(mockUser as any), 0);
+      setTimeout(() => callback(mockFirebaseUser as any), 0);
       return jest.fn();
     });
 
@@ -66,7 +106,13 @@ describe('useAuth hook', () => {
     expect(mockAuthService.signIn).toHaveBeenCalledWith(credentials);
 
     await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.user).toEqual(expect.objectContaining({
+        uid: 'test-uid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        emailVerified: true,
+        role: 'user',
+      }));
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe(null);
     });
@@ -99,18 +145,31 @@ describe('useAuth hook', () => {
   });
 
   it('should sign up user successfully', async () => {
-    const mockUser = {
+    const mockFirebaseUser = {
       uid: 'new-user-uid',
       email: 'newuser@example.com',
-      displayName: null,
+      displayName: 'John Doe',
+      photoURL: null,
       emailVerified: false,
     };
 
-    mockAuthService.signUp.mockResolvedValue(mockUser);
+    const expectedUser = {
+      uid: 'new-user-uid',
+      email: 'newuser@example.com',
+      displayName: 'John Doe',
+      photoURL: null,
+      emailVerified: false,
+      createdAt: '2023-01-01T00:00:00.000Z',
+      lastLoginAt: '2023-01-01T00:00:00.000Z',
+      role: 'user',
+      profile: expect.any(Object),
+    };
 
-    // Mock onAuthStateChanged to return the user after sign up
+    mockAuthService.signUp.mockResolvedValue(expectedUser);
+
+    // Mock onAuthStateChanged to return the firebase user after sign up
     mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      setTimeout(() => callback(mockUser as any), 0);
+      setTimeout(() => callback(mockFirebaseUser as any), 0);
       return jest.fn();
     });
 
@@ -131,7 +190,13 @@ describe('useAuth hook', () => {
     expect(mockAuthService.signUp).toHaveBeenCalledWith(credentials);
 
     await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.user).toEqual(expect.objectContaining({
+        uid: 'new-user-uid',
+        email: 'newuser@example.com',
+        displayName: 'John Doe',
+        emailVerified: false,
+        role: 'user',
+      }));
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe(null);
     });
@@ -167,16 +232,19 @@ describe('useAuth hook', () => {
   });
 
   it('should sign out user successfully', async () => {
-    const mockUser = {
+    const mockFirebaseUser = {
       uid: 'test-uid',
       email: 'test@example.com',
       displayName: 'Test User',
+      photoURL: null,
       emailVerified: true,
     };
 
     // Start with a signed-in user
+    let authCallback: ((user: any) => void) | null = null;
     mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      callback(mockUser as any);
+      authCallback = callback;
+      callback(mockFirebaseUser as any);
       return jest.fn();
     });
 
@@ -186,17 +254,19 @@ describe('useAuth hook', () => {
 
     // Wait for initial user state
     await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
-    });
-
-    // Mock onAuthStateChanged to return null after sign out
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      callback(null);
-      return jest.fn();
+      expect(result.current.user).toEqual(expect.objectContaining({
+        uid: 'test-uid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+      }));
     });
 
     await act(async () => {
       await result.current.signOut();
+      // Simulate Firebase auth state change after sign out
+      if (authCallback) {
+        authCallback(null);
+      }
     });
 
     expect(mockAuthService.signOut).toHaveBeenCalled();
@@ -276,21 +346,28 @@ describe('useAuth hook', () => {
     });
 
     // Simulate user sign in
-    const mockUser = {
+    const mockFirebaseUser = {
       uid: 'test-uid',
       email: 'test@example.com',
       displayName: 'Test User',
+      photoURL: null,
       emailVerified: true,
     };
 
     act(() => {
       if (authStateCallback) {
-        authStateCallback(mockUser);
+        authStateCallback(mockFirebaseUser);
       }
     });
 
     await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.user).toEqual(expect.objectContaining({
+        uid: 'test-uid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        emailVerified: true,
+        role: 'user',
+      }));
     });
 
     // Simulate user sign out

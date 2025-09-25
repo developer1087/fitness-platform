@@ -12,6 +12,7 @@ interface AuthContextType extends AuthState {
   signUp: (credentials: SignupCredentials) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -127,6 +128,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -136,6 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signOut,
     resetPassword,
+    clearError,
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);
