@@ -1,8 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "cd apps/web && npm run build",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "npm install && npm run install-workspaces",
-  "framework": "nextjs",
-  "rootDirectory": "apps/web"
+  "installCommand": "npm install && cd apps/web && npm install"
 }
