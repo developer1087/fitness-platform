@@ -3,7 +3,7 @@ export * from './auth/types';
 export * from './auth/schemas';
 
 // User types - exclude conflicting types
-export {
+export type {
   UserProfile as DetailedUserProfile,
   PhysicalMeasurement,
   FitnessLevel,

@@ -314,7 +314,7 @@ export interface WorkoutProgress {
   timesPerformed: number;
 
   // Progression
-  progressHistory: ProgressEntry[];
+  progressHistory: WorkoutProgressEntry[];
 
   // Analysis
   strengths: string[];
@@ -322,7 +322,7 @@ export interface WorkoutProgress {
   recommendations: string[];
 }
 
-export interface ProgressEntry {
+export interface WorkoutProgressEntry {
   date: Date;
   workout: string; // Workout ID
   sets: ExerciseSet[];
