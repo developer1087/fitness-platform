@@ -31,6 +31,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.ryzup.fitness",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "CAMERA",
         "WRITE_EXTERNAL_STORAGE",
