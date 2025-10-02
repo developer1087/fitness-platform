@@ -1,28 +1,12 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 
-// Production Firebase Configuration (same as web app)
-const firebaseConfig = {
-  apiKey: "AIzaSyBv4edZFdKq5UieQchPC3SXjDtKXuUYsd0",
-  authDomain: "fitness-platform-us-1759049736.firebaseapp.com",
-  projectId: "fitness-platform-us-1759049736",
-  storageBucket: "fitness-platform-us-1759049736.firebasestorage.app",
-  messagingSenderId: "388593504795",
-  appId: "1:388593504795:web:f0c3b2e60b3076d2cd9ebe",
-  measurementId: "G-657169BEFM"
-};
+// React Native Firebase is automatically configured via google-services.json
+// No need for manual initialization like web Firebase
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Export Firebase services
+export { auth, firestore as db, storage };
 
-// Initialize Firebase Auth (getAuth works for both web and React Native)
-const auth = getAuth(app);
-
-// Initialize other Firebase services
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-export { auth, db, storage };
-export default app;
+// For compatibility with existing code that imports 'auth'
+export default auth;

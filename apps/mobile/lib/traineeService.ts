@@ -1,5 +1,4 @@
-import { db } from './firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 
 export interface TraineeData {
   id: string;
@@ -34,9 +33,10 @@ export class TraineeService {
    */
   static async getTraineeByUserId(userId: string): Promise<TraineeData | null> {
     try {
-      const traineesRef = collection(db, this.TRAINEES_COLLECTION);
-      const q = query(traineesRef, where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .where('userId', '==', userId)
+        .get();
 
       if (querySnapshot.empty) {
         console.log('No trainee found for userId:', userId);
@@ -59,10 +59,12 @@ export class TraineeService {
    */
   static async getTraineeById(traineeId: string): Promise<TraineeData | null> {
     try {
-      const traineeRef = doc(db, this.TRAINEES_COLLECTION, traineeId);
-      const traineeDoc = await getDoc(traineeRef);
+      const traineeDoc = await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .doc(traineeId)
+        .get();
 
-      if (!traineeDoc.exists()) {
+      if (!traineeDoc.exists) {
         console.log('No trainee found for ID:', traineeId);
         return null;
       }
@@ -87,10 +89,12 @@ export class TraineeService {
         return null;
       }
 
-      const trainerRef = doc(db, this.TRAINERS_COLLECTION, trainee.trainerId);
-      const trainerDoc = await getDoc(trainerRef);
+      const trainerDoc = await firestore()
+        .collection(this.TRAINERS_COLLECTION)
+        .doc(trainee.trainerId)
+        .get();
 
-      if (!trainerDoc.exists()) {
+      if (!trainerDoc.exists) {
         console.log('No trainer found for ID:', trainee.trainerId);
         return null;
       }
@@ -117,10 +121,12 @@ export class TraineeService {
         return null;
       }
 
-      const trainerRef = doc(db, this.TRAINERS_COLLECTION, trainee.trainerId);
-      const trainerDoc = await getDoc(trainerRef);
+      const trainerDoc = await firestore()
+        .collection(this.TRAINERS_COLLECTION)
+        .doc(trainee.trainerId)
+        .get();
 
-      if (!trainerDoc.exists()) {
+      if (!trainerDoc.exists) {
         console.log('No trainer found for ID:', trainee.trainerId);
         return null;
       }

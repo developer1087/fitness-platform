@@ -1,93 +1,131 @@
 import { LoginFormData, SignupFormData } from './shared-types';
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
-// Mobile auth service - placeholder for Firebase integration
+// Type alias for User
+type User = FirebaseAuthTypes.User;
+
+// Production Firebase Auth Service
 export class AuthService {
-  static async signIn(credentials: LoginFormData): Promise<{ user: any }> {
-    // TODO: Integrate with Firebase Auth
-    // This is a placeholder implementation
+  static async signIn(credentials: LoginFormData): Promise<{ user: User }> {
     try {
-      console.log('Attempting to sign in with:', credentials.email);
+      console.log('🔐 Signing in with Firebase:', credentials.email);
+      const userCredential = await auth().signInWithEmailAndPassword(
+        credentials.email,
+        credentials.password
+      );
+      console.log('✅ Firebase sign in successful:', userCredential.user.uid);
+      return { user: userCredential.user };
+    } catch (error: any) {
+      console.error('❌ Firebase sign in error:', error);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock validation
-      if (credentials.email === 'test@example.com' && credentials.password === 'password123') {
-        return {
-          user: {
-            uid: 'mock-user-id',
-            email: credentials.email,
-            displayName: 'Test User',
-            emailVerified: true,
-          }
-        };
-      } else {
-        throw new Error('Invalid email or password');
+      // Provide user-friendly error messages
+      let message = 'Sign in failed. Please try again.';
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            message = 'Invalid email or password. Please check your credentials.';
+            break;
+          case 'auth/too-many-requests':
+            message = 'Too many failed attempts. Please try again later.';
+            break;
+          case 'auth/network-request-failed':
+            message = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            message = error.message;
+        }
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
-      throw error;
+      throw new Error(message);
     }
   }
 
-  static async signUp(credentials: SignupFormData): Promise<{ user: any }> {
-    // TODO: Integrate with Firebase Auth
+  static async signUp(credentials: SignupFormData): Promise<{ user: User }> {
     try {
-      console.log('Attempting to sign up with:', credentials.email);
+      console.log('📝 Creating Firebase account:', credentials.email);
+      const userCredential = await auth().createUserWithEmailAndPassword(
+        credentials.email,
+        credentials.password
+      );
+      console.log('✅ Firebase account created:', userCredential.user.uid);
+      return { user: userCredential.user };
+    } catch (error: any) {
+      console.error('❌ Firebase sign up error:', error);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Mock user creation
-      return {
-        user: {
-          uid: 'mock-new-user-id',
-          email: credentials.email,
-          displayName: credentials.firstName + ' ' + credentials.lastName,
-          emailVerified: false,
+      // Provide user-friendly error messages
+      let message = 'Account creation failed. Please try again.';
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            message = 'This email is already registered. Please sign in instead.';
+            break;
+          case 'auth/weak-password':
+            message = 'Password is too weak. Please choose a stronger password.';
+            break;
+          case 'auth/invalid-email':
+            message = 'Invalid email address. Please check the format.';
+            break;
+          case 'auth/network-request-failed':
+            message = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            message = error.message;
         }
-      };
-    } catch (error) {
-      console.error('Sign up error:', error);
-      throw error;
+      }
+      throw new Error(message);
     }
   }
 
   static async signOut(): Promise<void> {
-    // TODO: Integrate with Firebase Auth
     try {
-      console.log('Signing out user');
-      // Simulate sign out
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('🚪 Signing out from Firebase');
+      await auth().signOut();
+      console.log('✅ Firebase sign out successful');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Firebase sign out error:', error);
       throw error;
     }
   }
 
-  static async getCurrentUser(): Promise<any | null> {
-    // TODO: Integrate with Firebase Auth
-    // This would typically check if user is authenticated
-    return null;
+  static getCurrentUser(): User | null {
+    return auth().currentUser;
   }
 
   static async resetPassword(email: string): Promise<void> {
-    // TODO: Integrate with Firebase Auth
     try {
-      console.log('Sending password reset email to:', email);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error('Password reset error:', error);
-      throw error;
+      console.log('📧 Sending password reset email:', email);
+      await auth().sendPasswordResetEmail(email);
+      console.log('✅ Password reset email sent');
+    } catch (error: any) {
+      console.error('❌ Password reset error:', error);
+
+      let message = 'Failed to send password reset email.';
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+            message = 'No account found with this email address.';
+            break;
+          case 'auth/invalid-email':
+            message = 'Invalid email address.';
+            break;
+          case 'auth/network-request-failed':
+            message = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            message = error.message;
+        }
+      }
+      throw new Error(message);
     }
   }
 }
 
-// Auth state management hooks for React Native
+// Auth state management hooks for React Native with Firebase
 
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   loading: boolean;
   error: string | null;
   signIn: (credentials: LoginFormData) => Promise<void>;
@@ -103,33 +141,33 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for existing user session on app startup
-    checkAuthState();
-  }, []);
+    console.log('🔄 Setting up Firebase auth state listener');
 
-  const checkAuthState = async () => {
-    try {
-      setLoading(true);
-      const currentUser = await AuthService.getCurrentUser();
-      setUser(currentUser);
-    } catch (err) {
-      console.error('Auth state check failed:', err);
-    } finally {
+    // Listen to Firebase auth state changes
+    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+      console.log('🔄 Firebase auth state changed:', firebaseUser?.uid || 'no user');
+      setUser(firebaseUser);
       setLoading(false);
-    }
-  };
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🧹 Cleaning up Firebase auth listener');
+      unsubscribe();
+    };
+  }, []);
 
   const signIn = async (credentials: LoginFormData) => {
     try {
       setLoading(true);
       setError(null);
       const result = await AuthService.signIn(credentials);
-      setUser(result.user);
+      // User state will be updated by onAuthStateChanged listener
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign in failed';
       setError(message);
@@ -144,7 +182,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(true);
       setError(null);
       const result = await AuthService.signUp(credentials);
-      setUser(result.user);
+      // User state will be updated by onAuthStateChanged listener
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed';
       setError(message);
@@ -159,7 +197,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(true);
       setError(null);
       await AuthService.signOut();
-      setUser(null);
+      // User state will be updated by onAuthStateChanged listener
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign out failed';
       setError(message);

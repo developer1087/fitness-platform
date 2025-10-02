@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "388593504795",
+    "project_id": "fitness-platform-us-1759049736",
+    "storage_bucket": "fitness-platform-us-1759049736.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:388593504795:android:a354ed4315c03319cd9ebe",
+        "android_client_info": {
+          "package_name": "com.ryzup.fitness"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBv4edZFdKq5UieQchPC3SXjDtKXuUYsd0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
