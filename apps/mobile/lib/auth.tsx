@@ -1,6 +1,7 @@
 import { LoginFormData, SignupFormData } from './shared-types';
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 // Type alias for User
 type User = FirebaseAuthTypes.User;
@@ -50,6 +51,41 @@ export class AuthService {
         credentials.password
       );
       console.log('✅ Firebase account created:', userCredential.user.uid);
+
+      // Create user profile in Firestore
+      const uid = userCredential.user.uid;
+      const now = new Date().toISOString();
+
+      try {
+        await firestore()
+          .collection('users')
+          .doc(uid)
+          .set({
+            email: credentials.email,
+            firstName: credentials.firstName,
+            lastName: credentials.lastName,
+            role: 'trainee', // Mobile app is for trainees
+            createdAt: now,
+            lastLoginAt: now,
+            preferences: {
+              workoutReminders: true,
+              emailNotifications: true,
+              pushNotifications: true,
+              privacySettings: {
+                profileVisibility: 'friends',
+                workoutDataSharing: false,
+                progressSharing: false,
+              },
+            },
+          });
+        console.log('✅ Firestore user document created:', uid);
+      } catch (firestoreError) {
+        console.error('❌ Firestore document creation error:', firestoreError);
+        // If Firestore creation fails, delete the auth user to maintain consistency
+        await userCredential.user.delete();
+        throw new Error('Failed to create user profile. Please try again.');
+      }
+
       return { user: userCredential.user };
     } catch (error: any) {
       console.error('❌ Firebase sign up error:', error);
