@@ -101,22 +101,53 @@ npm run dev
 - **Project ID:** `fitness-platform-us-1759049736`
 - **Region:** US
 - **Collections:** `trainers`, `trainees`, `trainee_invitations`, `users`
-- **Auth:** Email/Password
+- **Auth Methods:**
+  - **Primary:** Phone Authentication (SMS verification) - Israeli numbers (`05XXXXXXXX`)
+  - **Fallback:** Email/Password, Google OAuth
 - **Security Rules:** Role-based access (trainers/trainees)
+- **Phone Auth:** Configured for Israeli market (+972 prefix)
 
 ## Current Features Status
 
 ### ✅ Implemented
-1. **Authentication** - Firebase Auth for trainers and trainees
-2. **Trainee Invitation System** - Email invitations with tokens
-3. **Mobile Device Detection** - Auto-redirect to app store for mobile users
-4. **Direct Firestore Access** - Mobile app queries directly (no REST API)
-5. **Multi-domain Setup** - ryzup.me (landing) + app.ryzup.me (dashboard)
+1. **Role-Based Authentication System**
+   - Trainers: Email/Password or Google OAuth (web only)
+   - Trainees: Phone Authentication (SMS verification) - PRIMARY METHOD
+   - Email/Password fallback for trainees
+   - Automatic role assignment (`trainer` vs `trainee`)
+   - TrainerLayout blocks trainee access to web dashboard
 
-### 🚧 In Progress
-1. **Google Play Testing** - Building APK/AAB for distribution
-2. **Workout Management** - Create and assign workouts
-3. **Progress Tracking** - Trainee progress in mobile app
+2. **Phone Authentication (NEW - October 2025)**
+   - Israeli phone number format: `05XXXXXXXX` (auto-formatted to +972)
+   - 3-step signup flow: Phone → SMS Code → Profile
+   - React Native Firebase phone auth integration
+   - PhoneAuthScreen component with professional UX
+   - Automatic Firestore user profile creation
+   - Error handling for SMS quota, invalid codes, etc.
+
+3. **Trainee Invitation System**
+   - **Primary:** SMS invitations with phone numbers
+   - **Fallback:** Email invitations
+   - Unique invitation tokens (7-day expiration)
+   - Pending/Active status management
+   - Auto-link trainee to trainer on signup
+
+4. **Infrastructure**
+   - Mobile Device Detection - Auto-redirect to app store
+   - Direct Firestore Access - No REST API needed
+   - Multi-domain Setup - ryzup.me + app.ryzup.me
+   - Shared Types - Consistent types across web and mobile
+
+### 🚧 In Progress (Next Steps)
+1. **Complete Phone Auth Integration**
+   - Update trainee invitation modal (phone number field)
+   - SMS invitation service/API
+   - Update traineeService for phone-based queries
+   - Firebase Console phone auth configuration
+
+2. **Google Play Testing** - APK/AAB distribution
+3. **Workout Management** - Create and assign workouts
+4. **Progress Tracking** - Trainee progress in mobile app
 
 ### 📋 Planned
 1. **In-app Messaging** - Trainer-trainee communication
