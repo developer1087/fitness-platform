@@ -185,6 +185,8 @@ export class AuthService {
 
       let message = 'Failed to send verification code. Please try again.';
       if (error?.code) {
+        console.log('🔍 Error code:', error.code);
+        console.log('🔍 Error message:', error.message);
         switch (error.code) {
           case 'auth/invalid-phone-number':
             message = 'Invalid phone number format. Please check and try again.';
@@ -198,8 +200,14 @@ export class AuthService {
           case 'auth/quota-exceeded':
             message = 'SMS quota exceeded. Please try again later.';
             break;
+          case 'auth/operation-not-allowed':
+            message = `Phone authentication is not enabled in Firebase Console. Please enable it at: Firebase Console → Authentication → Sign-in method → Phone (Error: ${error.code})`;
+            break;
+          case 'auth/missing-client-identifier':
+            message = 'Phone authentication configuration error. SHA-256 certificate may not be configured correctly in Firebase Console.';
+            break;
           default:
-            message = error.message;
+            message = `${error.message} (Error code: ${error.code})`;
         }
       }
       throw new Error(message);
