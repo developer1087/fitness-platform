@@ -2,6 +2,7 @@ import { LoginFormData, SignupFormData, PhoneLoginFormData, PhoneSignupFormData 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import TraineeService from './traineeService';
 
 // Type alias for User
 type User = FirebaseAuthTypes.User;
@@ -272,13 +273,16 @@ export class AuthService {
       // Create user profile in Firestore
       const uid = currentUser.uid;
       const now = new Date().toISOString();
+      const formattedPhone = credentials.phoneNumber.startsWith('+972')
+        ? credentials.phoneNumber
+        : `+972${credentials.phoneNumber.substring(1)}`;
 
       try {
         await firestore()
           .collection('users')
           .doc(uid)
           .set({
-            phoneNumber: credentials.phoneNumber,
+            phoneNumber: formattedPhone,
             email: null, // Phone auth doesn't have email
             firstName: credentials.firstName,
             lastName: credentials.lastName,
@@ -298,6 +302,15 @@ export class AuthService {
             },
           });
         console.log('✅ Firestore user document created:', uid);
+
+        // Update trainee status from pending to active
+        try {
+          await TraineeService.updateTraineeStatus(uid, 'active');
+          console.log('✅ Trainee status updated to active');
+        } catch (traineeError) {
+          console.warn('⚠️ Could not update trainee status (trainee might not exist yet):', traineeError);
+          // Don't fail signup if trainee status update fails
+        }
       } catch (firestoreError) {
         console.error('❌ Firestore document creation error:', firestoreError);
         // If Firestore creation fails, delete the auth user to maintain consistency

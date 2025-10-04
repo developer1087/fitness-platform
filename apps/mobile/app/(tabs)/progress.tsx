@@ -5,9 +5,9 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
 import { workoutService, WorkoutStats } from '../../lib/workouts';
 import { exerciseDatabase } from '../../lib/shared-types';

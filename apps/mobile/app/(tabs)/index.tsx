@@ -5,14 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
 import { router } from 'expo-router';
 import { LogWorkoutModal } from '../../components/workouts/LogWorkoutModal';
 import { LiveWorkoutScreen } from '../../components/workouts/LiveWorkoutScreen';
 import { BookSessionModal } from '../../components/sessions/BookSessionModal';
-import { TrainerDashboard } from '../../components/trainer/TrainerDashboard';
 import { ConversationsList } from '../../components/messaging/ConversationsList';
 import { MessageNotificationBadge } from '../../components/messaging/MessageNotificationBadge';
 import { workoutService } from '../../lib/workouts';
@@ -24,7 +23,6 @@ export default function HomeScreen() {
   const [showLogWorkoutModal, setShowLogWorkoutModal] = useState(false);
   const [showLiveWorkout, setShowLiveWorkout] = useState(false);
   const [showBookSessionModal, setShowBookSessionModal] = useState(false);
-  const [showTrainerDashboard, setShowTrainerDashboard] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [todayStats, setTodayStats] = useState({
@@ -209,19 +207,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Demo Section */}
-        <View style={styles.demoContainer}>
-          <Text style={styles.demoTitle}>🔍 Demo: Trainer View</Text>
-          <Text style={styles.demoDescription}>
-            See how trainers can view all trainee data, workouts, and progress in real-time
-          </Text>
-          <TouchableOpacity
-            style={styles.demoButton}
-            onPress={() => setShowTrainerDashboard(true)}
-          >
-            <Text style={styles.demoButtonText}>View Trainer Dashboard</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Motivation Quote */}
         <View style={styles.motivationContainer}>
@@ -267,12 +252,6 @@ export default function HomeScreen() {
           setShowBookSessionModal(false);
           loadUpcomingSessions(); // Refresh sessions list
         }}
-      />
-
-      {/* Trainer Dashboard */}
-      <TrainerDashboard
-        visible={showTrainerDashboard}
-        onClose={() => setShowTrainerDashboard(false)}
       />
 
       {/* Messages */}

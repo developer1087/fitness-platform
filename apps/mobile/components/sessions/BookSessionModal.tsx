@@ -8,9 +8,11 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { sessionService } from '../../lib/sessions';
+import TraineeService from '../../lib/traineeService';
 
 interface Trainer {
   id: string;
@@ -43,10 +45,50 @@ export function BookSessionModal({
   const [sessionType, setSessionType] = useState<'personal' | 'group'>('personal');
   const [sessionGoal, setSessionGoal] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [step, setStep] = useState<'trainers' | 'schedule' | 'details' | 'confirm'>('trainers');
+  const [step, setStep] = useState<'trainers' | 'schedule' | 'details' | 'confirm'>('schedule'); // Skip trainer selection
+  const [loading, setLoading] = useState(false);
+  const [trainer, setTrainer] = useState<any>(null);
 
-  // Mock trainers data - in real app this would come from API
-  const trainers: Trainer[] = [
+  // Fetch the trainee's trainer
+  useEffect(() => {
+    if (visible && user?.uid) {
+      loadTrainer();
+    }
+  }, [visible, user]);
+
+  const loadTrainer = async () => {
+    try {
+      setLoading(true);
+      const trainerData = await TraineeService.getTrainerByUserId(user?.uid || '');
+      if (trainerData) {
+        setTrainer(trainerData);
+        // Auto-select this trainer
+        const trainerWithAvailability: Trainer = {
+          id: trainerData.id,
+          name: `${trainerData.firstName} ${trainerData.lastName}`,
+          specialties: ['Personal Training'], // You can enhance this later
+          rating: 5.0,
+          experience: 'Certified Trainer',
+          avatar: '💪',
+          pricePerHour: 100,
+          availability: {
+            [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+            [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
+            [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+          },
+        };
+        setSelectedTrainer(trainerWithAvailability);
+      }
+    } catch (error) {
+      console.error('Error loading trainer:', error);
+      Alert.alert('Error', 'Failed to load trainer information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock trainers data - FALLBACK only if no real trainer found
+  const trainers: Trainer[] = trainer ? [] : [
     {
       id: 'trainer1',
       name: 'Sarah Johnson',

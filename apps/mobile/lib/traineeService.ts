@@ -140,6 +140,61 @@ export class TraineeService {
       throw error;
     }
   }
+
+  /**
+   * Update trainee status (e.g., pending → active)
+   */
+  static async updateTraineeStatus(
+    userId: string,
+    status: 'pending' | 'active' | 'inactive'
+  ): Promise<void> {
+    try {
+      const trainee = await this.getTraineeByUserId(userId);
+      if (!trainee) {
+        console.log('No trainee found for userId:', userId);
+        return;
+      }
+
+      await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .doc(trainee.id)
+        .update({
+          status,
+          updatedAt: new Date().toISOString(),
+        });
+
+      console.log(`✅ Trainee status updated to: ${status}`);
+    } catch (error) {
+      console.error('Error updating trainee status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get trainee by phone number
+   */
+  static async getTraineeByPhone(phoneNumber: string): Promise<TraineeData | null> {
+    try {
+      const querySnapshot = await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .where('phoneNumber', '==', phoneNumber)
+        .get();
+
+      if (querySnapshot.empty) {
+        console.log('No trainee found for phone:', phoneNumber);
+        return null;
+      }
+
+      const traineeDoc = querySnapshot.docs[0];
+      return {
+        id: traineeDoc.id,
+        ...traineeDoc.data()
+      } as TraineeData;
+    } catch (error) {
+      console.error('Error fetching trainee by phone:', error);
+      throw error;
+    }
+  }
 }
 
 export default TraineeService;

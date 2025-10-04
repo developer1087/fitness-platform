@@ -5,9 +5,9 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Workout, exerciseDatabase, workoutTemplates } from '../../lib/shared-types';
 import { LogWorkoutModal } from '../../components/workouts/LogWorkoutModal';
 import { LiveWorkoutScreen } from '../../components/workouts/LiveWorkoutScreen';
