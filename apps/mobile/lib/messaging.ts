@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import firestore from '@react-native-firebase/firestore';
 
 export interface Message {
   id: string;
@@ -40,9 +40,8 @@ export interface MessageTemplate {
 }
 
 class MessagingService {
-  private readonly CONVERSATIONS_KEY = 'fitness_conversations';
-  private readonly MESSAGES_KEY = 'fitness_messages';
-  private readonly UNREAD_KEY = 'fitness_unread';
+  private readonly CONVERSATIONS_COLLECTION = 'conversations';
+  private readonly MESSAGES_COLLECTION = 'messages';
 
   // Pre-defined message templates for trainers
   private messageTemplates: MessageTemplate[] = [
@@ -86,49 +85,34 @@ class MessagingService {
 
   async sendMessage(messageData: Omit<Message, 'id' | 'timestamp' | 'isRead'>): Promise<Message> {
     try {
+      const timestamp = new Date().toISOString();
       const message: Message = {
         ...messageData,
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date().toISOString(),
+        id: '', // Will be set by Firestore
+        timestamp,
         isRead: false
       };
 
-      // Save message
-      await this.saveMessage(message);
+      // Save message to Firestore
+      const messageRef = await firestore()
+        .collection(this.MESSAGES_COLLECTION)
+        .add(message);
+
+      message.id = messageRef.id;
 
       // Update or create conversation
       await this.updateConversation(message);
 
-      // Update unread count for recipient
-      await this.updateUnreadCount(message.recipientId, message.conversationId);
-
+      console.log('✅ Message sent:', message.id);
       return message;
     } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
-    }
-  }
-
-  private async saveMessage(message: Message): Promise<void> {
-    try {
-      const messagesKey = `${this.MESSAGES_KEY}_${message.conversationId}`;
-      const existingMessages = await this.getConversationMessages(message.conversationId);
-      const updatedMessages = [...existingMessages, message];
-
-      await AsyncStorage.setItem(messagesKey, JSON.stringify(updatedMessages));
-    } catch (error) {
-      console.error('Error saving message:', error);
+      console.error('❌ Error sending message:', error);
       throw error;
     }
   }
 
   private async updateConversation(message: Message): Promise<void> {
     try {
-      const conversations = await this.getAllConversations();
-      const existingConversationIndex = conversations.findIndex(
-        conv => conv.id === message.conversationId
-      );
-
       const conversation: Conversation = {
         id: message.conversationId,
         trainerId: message.senderType === 'trainer' ? message.senderId : message.recipientId,
@@ -136,117 +120,186 @@ class MessagingService {
         traineeId: message.senderType === 'trainee' ? message.senderId : message.recipientId,
         traineeName: message.senderType === 'trainee' ? message.senderName : message.recipientName,
         lastMessage: message,
-        unreadCount: 0, // Will be updated separately
+        unreadCount: 0,
         lastActivity: message.timestamp,
         isActive: true
       };
 
-      if (existingConversationIndex >= 0) {
-        conversations[existingConversationIndex] = conversation;
-      } else {
-        conversations.push(conversation);
-      }
+      // Update or create conversation in Firestore
+      await firestore()
+        .collection(this.CONVERSATIONS_COLLECTION)
+        .doc(message.conversationId)
+        .set(conversation, { merge: true });
 
-      await AsyncStorage.setItem(this.CONVERSATIONS_KEY, JSON.stringify(conversations));
+      console.log('✅ Conversation updated:', message.conversationId);
     } catch (error) {
-      console.error('Error updating conversation:', error);
+      console.error('❌ Error updating conversation:', error);
       throw error;
-    }
-  }
-
-  private async updateUnreadCount(userId: string, conversationId: string): Promise<void> {
-    try {
-      const unreadKey = `${this.UNREAD_KEY}_${userId}`;
-      const unreadData = await AsyncStorage.getItem(unreadKey);
-      const unreadCounts = unreadData ? JSON.parse(unreadData) : {};
-
-      unreadCounts[conversationId] = (unreadCounts[conversationId] || 0) + 1;
-
-      await AsyncStorage.setItem(unreadKey, JSON.stringify(unreadCounts));
-    } catch (error) {
-      console.error('Error updating unread count:', error);
     }
   }
 
   async getConversationMessages(conversationId: string): Promise<Message[]> {
     try {
-      const messagesKey = `${this.MESSAGES_KEY}_${conversationId}`;
-      const messagesData = await AsyncStorage.getItem(messagesKey);
-      return messagesData ? JSON.parse(messagesData) : [];
+      const messagesSnapshot = await firestore()
+        .collection(this.MESSAGES_COLLECTION)
+        .where('conversationId', '==', conversationId)
+        .orderBy('timestamp', 'asc')
+        .get();
+
+      const messages: Message[] = messagesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Message));
+
+      return messages;
     } catch (error) {
-      console.error('Error getting conversation messages:', error);
+      console.error('❌ Error getting conversation messages:', error);
       return [];
     }
+  }
+
+  /**
+   * Listen to new messages in real-time
+   */
+  subscribeToMessages(
+    conversationId: string,
+    callback: (messages: Message[]) => void
+  ): () => void {
+    const unsubscribe = firestore()
+      .collection(this.MESSAGES_COLLECTION)
+      .where('conversationId', '==', conversationId)
+      .orderBy('timestamp', 'asc')
+      .onSnapshot(
+        (snapshot) => {
+          const messages: Message[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Message));
+          callback(messages);
+        },
+        (error) => {
+          console.error('❌ Error listening to messages:', error);
+        }
+      );
+
+    return unsubscribe;
   }
 
   async getUserConversations(userId: string, userType: 'trainer' | 'trainee'): Promise<Conversation[]> {
     try {
-      const conversations = await this.getAllConversations();
-      const userConversations = conversations.filter(conv =>
-        userType === 'trainer' ? conv.trainerId === userId : conv.traineeId === userId
-      );
+      const field = userType === 'trainer' ? 'trainerId' : 'traineeId';
 
-      // Sort by last activity
-      userConversations.sort((a, b) =>
-        new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
-      );
+      const conversationsSnapshot = await firestore()
+        .collection(this.CONVERSATIONS_COLLECTION)
+        .where(field, '==', userId)
+        .orderBy('lastActivity', 'desc')
+        .get();
 
-      // Update unread counts
-      const unreadKey = `${this.UNREAD_KEY}_${userId}`;
-      const unreadData = await AsyncStorage.getItem(unreadKey);
-      const unreadCounts = unreadData ? JSON.parse(unreadData) : {};
+      const conversations: Conversation[] = conversationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Conversation));
 
-      return userConversations.map(conv => ({
-        ...conv,
-        unreadCount: unreadCounts[conv.id] || 0
-      }));
+      // Calculate unread counts for each conversation
+      for (const conv of conversations) {
+        const unreadCount = await this.getUnreadCount(conv.id, userId);
+        conv.unreadCount = unreadCount;
+      }
+
+      return conversations;
     } catch (error) {
-      console.error('Error getting user conversations:', error);
+      console.error('❌ Error getting user conversations:', error);
       return [];
     }
   }
 
-  private async getAllConversations(): Promise<Conversation[]> {
+  /**
+   * Listen to conversations in real-time
+   */
+  subscribeToConversations(
+    userId: string,
+    userType: 'trainer' | 'trainee',
+    callback: (conversations: Conversation[]) => void
+  ): () => void {
+    const field = userType === 'trainer' ? 'trainerId' : 'traineeId';
+
+    const unsubscribe = firestore()
+      .collection(this.CONVERSATIONS_COLLECTION)
+      .where(field, '==', userId)
+      .orderBy('lastActivity', 'desc')
+      .onSnapshot(
+        async (snapshot) => {
+          const conversations: Conversation[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Conversation));
+
+          // Calculate unread counts
+          for (const conv of conversations) {
+            const unreadCount = await this.getUnreadCount(conv.id, userId);
+            conv.unreadCount = unreadCount;
+          }
+
+          callback(conversations);
+        },
+        (error) => {
+          console.error('❌ Error listening to conversations:', error);
+        }
+      );
+
+    return unsubscribe;
+  }
+
+  private async getUnreadCount(conversationId: string, userId: string): Promise<number> {
     try {
-      const conversationsData = await AsyncStorage.getItem(this.CONVERSATIONS_KEY);
-      return conversationsData ? JSON.parse(conversationsData) : [];
+      const unreadSnapshot = await firestore()
+        .collection(this.MESSAGES_COLLECTION)
+        .where('conversationId', '==', conversationId)
+        .where('recipientId', '==', userId)
+        .where('isRead', '==', false)
+        .get();
+
+      return unreadSnapshot.size;
     } catch (error) {
-      console.error('Error getting all conversations:', error);
-      return [];
+      console.error('❌ Error getting unread count:', error);
+      return 0;
     }
   }
 
   async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
     try {
-      // Update messages
-      const messages = await this.getConversationMessages(conversationId);
-      const updatedMessages = messages.map(msg =>
-        msg.recipientId === userId ? { ...msg, isRead: true } : msg
-      );
+      // Get unread messages for this user
+      const unreadSnapshot = await firestore()
+        .collection(this.MESSAGES_COLLECTION)
+        .where('conversationId', '==', conversationId)
+        .where('recipientId', '==', userId)
+        .where('isRead', '==', false)
+        .get();
 
-      const messagesKey = `${this.MESSAGES_KEY}_${conversationId}`;
-      await AsyncStorage.setItem(messagesKey, JSON.stringify(updatedMessages));
+      // Batch update all unread messages
+      const batch = firestore().batch();
+      unreadSnapshot.docs.forEach(doc => {
+        batch.update(doc.ref, { isRead: true });
+      });
 
-      // Reset unread count
-      const unreadKey = `${this.UNREAD_KEY}_${userId}`;
-      const unreadData = await AsyncStorage.getItem(unreadKey);
-      const unreadCounts = unreadData ? JSON.parse(unreadData) : {};
-      unreadCounts[conversationId] = 0;
-      await AsyncStorage.setItem(unreadKey, JSON.stringify(unreadCounts));
+      await batch.commit();
+      console.log(`✅ Marked ${unreadSnapshot.size} messages as read`);
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      console.error('❌ Error marking messages as read:', error);
     }
   }
 
   async getTotalUnreadCount(userId: string): Promise<number> {
     try {
-      const unreadKey = `${this.UNREAD_KEY}_${userId}`;
-      const unreadData = await AsyncStorage.getItem(unreadKey);
-      const unreadCounts = unreadData ? JSON.parse(unreadData) : {};
+      const unreadSnapshot = await firestore()
+        .collection(this.MESSAGES_COLLECTION)
+        .where('recipientId', '==', userId)
+        .where('isRead', '==', false)
+        .get();
 
-      return Object.values(unreadCounts).reduce((total: number, count: any) => total + count, 0);
+      return unreadSnapshot.size;
     } catch (error) {
-      console.error('Error getting total unread count:', error);
+      console.error('❌ Error getting total unread count:', error);
       return 0;
     }
   }
@@ -266,16 +319,12 @@ class MessagingService {
       isActive: true
     };
 
-    const conversations = await this.getAllConversations();
-    const existingIndex = conversations.findIndex(conv => conv.id === conversationId);
+    await firestore()
+      .collection(this.CONVERSATIONS_COLLECTION)
+      .doc(conversationId)
+      .set(conversation, { merge: true });
 
-    if (existingIndex >= 0) {
-      conversations[existingIndex] = conversation;
-    } else {
-      conversations.push(conversation);
-    }
-
-    await AsyncStorage.setItem(this.CONVERSATIONS_KEY, JSON.stringify(conversations));
+    console.log('✅ Conversation created:', conversationId);
     return conversationId;
   }
 
@@ -362,34 +411,6 @@ class MessagingService {
       return this.messageTemplates.filter(template => template.category === category);
     }
     return this.messageTemplates;
-  }
-
-  // Simulate real-time messaging (in a real app, this would use WebSockets or Firebase)
-  private messageListeners: { [conversationId: string]: ((message: Message) => void)[] } = {};
-
-  addMessageListener(conversationId: string, callback: (message: Message) => void): () => void {
-    if (!this.messageListeners[conversationId]) {
-      this.messageListeners[conversationId] = [];
-    }
-    this.messageListeners[conversationId].push(callback);
-
-    // Return cleanup function
-    return () => {
-      const listeners = this.messageListeners[conversationId];
-      if (listeners) {
-        const index = listeners.indexOf(callback);
-        if (index > -1) {
-          listeners.splice(index, 1);
-        }
-      }
-    };
-  }
-
-  private notifyMessageListeners(conversationId: string, message: Message): void {
-    const listeners = this.messageListeners[conversationId];
-    if (listeners) {
-      listeners.forEach(callback => callback(message));
-    }
   }
 }
 
