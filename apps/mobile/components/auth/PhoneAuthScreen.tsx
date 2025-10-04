@@ -308,7 +308,7 @@ export default function PhoneAuthScreen({ onSuccess, onSwitchToEmail }: PhoneAut
             value={lastName}
             onChangeText={setLastName}
             autoComplete="family-name"
-            textContentType="familyName"}
+            textContentType="familyName"
             editable={!loading}
           />
         </View>
