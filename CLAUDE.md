@@ -1,7 +1,7 @@
 # Ryzup Fitness - Training Management Platform
 
-**Status:** 🟢 Active Development - Google Play Testing Phase
-**Last Updated:** October 2, 2025
+**Status:** 🟢 Active Development - Production Deployment Mode
+**Last Updated:** October 4, 2025
 
 ## Project Overview
 A comprehensive fitness training management system with **three separate applications**:
@@ -9,12 +9,20 @@ A comprehensive fitness training management system with **three separate applica
 - **Web App** (app.ryzup.me): Trainer dashboard for managing trainees
 - **Mobile App**: React Native app for trainees (workouts, progress tracking)
 
+## Development Workflow
+**IMPORTANT:** We work in **production-first mode**:
+- ✅ **No local development** - all changes deploy directly to production
+- ✅ **Vercel auto-deploys** on git push (landing + web apps)
+- ✅ **EAS builds** for mobile app (download and install APK)
+- ✅ **Firebase production instance** - single project for all environments
+- ⚠️ **Be careful** - every change goes live immediately!
+
 ## Architecture Decisions
 - **Separate repositories** for each application (landing, web, mobile in monorepo)
 - **Firebase-first backend** for real-time features and scalability
 - **Direct Firestore access** - Mobile app queries Firestore directly (no REST API)
-- **Vercel hosting** for web apps with auto-deployment
-- **EAS Build** for mobile app distribution
+- **Vercel hosting** for web apps with auto-deployment on push
+- **EAS Build** for mobile app distribution (download APK links)
 
 ## Tech Stack
 ### Frontend
