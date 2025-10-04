@@ -1,6 +1,6 @@
 # Phone Authentication Implementation Guide
 
-**Status:** 🟡 70% Complete - Core functionality implemented
+**Status:** 🟢 85% Complete - SMS service ready, mobile integration pending
 **Last Updated:** October 3, 2025
 
 ## Overview
@@ -110,38 +110,49 @@ class AuthService {
    - Automatic Firestore user document creation
    - Role assignment (`trainee`)
 
-### 🚧 In Progress / Remaining Work
+### ✅ Completed (Additional)
 
 #### 5. Web Trainee Invitation Form
-**File to Update:** `/fitness-platform-web-standalone/src/app/trainees/page.tsx`
+**File:** `/fitness-platform-web-standalone/src/components/AddTraineeModal.tsx`
 
-**Required Changes:**
-- Add phone number field (primary)
-- Make email optional (fallback)
-- Update form validation to use new schema
-- Show phone number in trainee list
+**Changes Completed:**
+- ✅ Added phone number field (primary, required)
+- ✅ Made email optional (fallback)
+- ✅ Updated form validation to use phone schema
+- ✅ Show phone number in trainee list (primary display)
 
 #### 6. Trainee Service Updates
 **File:** `/fitness-platform-web-standalone/src/lib/traineeService.ts`
 
-**Required Changes:**
-```typescript
-// Update queries to support phone as primary identifier
-static async getTraineeByPhone(trainerId: string, phoneNumber: string): Promise<Trainee | null>
-
-// Update invitation creation to use phone
-static async inviteTrainee(trainerId: string, invitationData: TraineeInvitationFormData)
-// Should create invitation with phoneNumber (required) and email (optional)
-```
+**Changes Completed:**
+- ✅ `getTraineeByPhone()` - Query trainees by phone number
+- ✅ Updated `inviteTrainee()` to use phone as primary
+- ✅ Updated `deleteTrainee()` to query by phone
+- ✅ SMS invitation integration (calls `/api/sms/invite`)
+- ✅ Email fallback if email provided
 
 #### 7. SMS Invitation Service
-**File to Create:** `/fitness-platform-web-standalone/src/app/api/sms/invite/route.ts`
+**Files Created:**
+- ✅ `/src/lib/smsService.ts` - SMS service with Twilio support
+- ✅ `/src/app/api/sms/invite/route.ts` - API route
+- ✅ `/SMS_SETUP.md` - Complete setup documentation
 
-**Implementation:**
-- Use Firebase Functions or Twilio for SMS sending
-- Send deep link: `ryzup://invite?token=XXX&phone=05XXXXXXXX`
-- Fallback to email if SMS fails
-- Development mode: Console log only
+**Features:**
+- ✅ Development mode: Console logging (no config needed)
+- ✅ Production mode: Twilio integration ready
+- ✅ Deep link generation: `ryzup://invite?token=XXX&phone=05X`
+- ✅ Israeli phone format handling
+- ✅ Graceful degradation on failures
+
+### 🚧 Remaining Work
+
+#### 8. Mobile App Auth Integration
+**Files to Update:** `/apps/mobile/app/` auth screens
+
+**Required Changes:**
+- Integrate PhoneAuthScreen into main auth flow
+- Update signup/login navigation
+- Handle deep link invitations
 
 #### 8. Firebase Configuration
 **Manual Steps Required:**

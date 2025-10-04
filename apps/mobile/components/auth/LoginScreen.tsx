@@ -20,13 +20,15 @@ interface LoginScreenProps {
   loading?: boolean;
   onForgotPassword?: () => void;
   onSignUp?: () => void;
+  onPhoneAuth?: () => void;
 }
 
 export function LoginScreen({
   onLogin,
   loading = false,
   onForgotPassword,
-  onSignUp
+  onSignUp,
+  onPhoneAuth
 }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -164,6 +166,19 @@ export function LoginScreen({
                 <Text style={styles.loginButtonText}>Sign In</Text>
               )}
             </TouchableOpacity>
+
+            {/* Phone Auth Button */}
+            {onPhoneAuth && (
+              <TouchableOpacity
+                style={styles.phoneAuthButton}
+                onPress={onPhoneAuth}
+                disabled={isLoading}
+              >
+                <Text style={styles.phoneAuthText}>
+                  📱 Sign in with Phone Number
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Forgot Password */}
             {onForgotPassword && (
@@ -308,6 +323,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  phoneAuthButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  phoneAuthText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
