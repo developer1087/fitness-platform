@@ -7,20 +7,30 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:388593504795:android:a354ed4315c03319cd9ebe",
+        "mobilesdk_app_id": "1:388593504795:android:e01e6309c68abce4cd9ebe",
         "android_client_info": {
           "package_name": "com.ryzup.fitness"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "388593504795-r8baoi608gep7bdbbv7supauthc3ph56.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBv4edZFdKq5UieQchPC3SXjDtKXuUYsd0"
+          "current_key": "AIzaSyB66TnIoqxSk4wqkg5RNIsiPWUxdRtlLzI"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "388593504795-r8baoi608gep7bdbbv7supauthc3ph56.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
