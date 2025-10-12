@@ -45,7 +45,7 @@ export function BookSessionModal({
   const [sessionType, setSessionType] = useState<'personal' | 'group'>('personal');
   const [sessionGoal, setSessionGoal] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [step, setStep] = useState<'trainers' | 'schedule' | 'details' | 'confirm'>('schedule'); // Skip trainer selection
+  const [step, setStep] = useState<'trainers' | 'schedule' | 'details' | 'confirm'>('trainers');
   const [loading, setLoading] = useState(false);
   const [trainer, setTrainer] = useState<any>(null);
 
@@ -87,51 +87,59 @@ export function BookSessionModal({
     }
   };
 
-  // Mock trainers data - FALLBACK only if no real trainer found
-  const trainers: Trainer[] = trainer ? [] : [
-    {
-      id: 'trainer1',
-      name: 'Sarah Johnson',
-      specialties: ['Strength Training', 'Weight Loss', 'HIIT'],
-      rating: 4.9,
-      experience: '5+ years',
-      avatar: '💪',
-      pricePerHour: 75,
-      availability: {
-        [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
-        [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
-        [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+  // Get trainers list - either the real trainer or demo data
+  const getTrainersList = (): Trainer[] => {
+    // If real trainer is loaded, show only the real trainer
+    if (selectedTrainer && trainer) {
+      return [selectedTrainer];
+    }
+
+    // Fallback to demo trainers if no real trainer found
+    return [
+      {
+        id: 'trainer1',
+        name: 'Sarah Johnson',
+        specialties: ['Strength Training', 'Weight Loss', 'HIIT'],
+        rating: 4.9,
+        experience: '5+ years',
+        avatar: '💪',
+        pricePerHour: 75,
+        availability: {
+          [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+          [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
+          [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+        },
       },
-    },
-    {
-      id: 'trainer2',
-      name: 'Mike Chen',
-      specialties: ['Cardio', 'Endurance', 'Running'],
-      rating: 4.8,
-      experience: '7+ years',
-      avatar: '🏃‍♂️',
-      pricePerHour: 80,
-      availability: {
-        [getDateString(0)]: ['08:00', '11:00', '13:00', '17:00'],
-        [getDateString(1)]: ['09:00', '10:00', '15:00', '16:00', '18:00'],
-        [getDateString(2)]: ['08:00', '12:00', '14:00', '16:00'],
+      {
+        id: 'trainer2',
+        name: 'Mike Chen',
+        specialties: ['Cardio', 'Endurance', 'Running'],
+        rating: 4.8,
+        experience: '7+ years',
+        avatar: '🏃‍♂️',
+        pricePerHour: 80,
+        availability: {
+          [getDateString(0)]: ['08:00', '11:00', '13:00', '17:00'],
+          [getDateString(1)]: ['09:00', '10:00', '15:00', '16:00', '18:00'],
+          [getDateString(2)]: ['08:00', '12:00', '14:00', '16:00'],
+        },
       },
-    },
-    {
-      id: 'trainer3',
-      name: 'Emma Wilson',
-      specialties: ['Yoga', 'Flexibility', 'Mindfulness'],
-      rating: 5.0,
-      experience: '4+ years',
-      avatar: '🧘‍♀️',
-      pricePerHour: 70,
-      availability: {
-        [getDateString(0)]: ['07:00', '12:00', '16:00', '18:00'],
-        [getDateString(1)]: ['08:00', '11:00', '14:00', '17:00'],
-        [getDateString(2)]: ['09:00', '13:00', '15:00', '19:00'],
+      {
+        id: 'trainer3',
+        name: 'Emma Wilson',
+        specialties: ['Yoga', 'Flexibility', 'Mindfulness'],
+        rating: 5.0,
+        experience: '4+ years',
+        avatar: '🧘‍♀️',
+        pricePerHour: 70,
+        availability: {
+          [getDateString(0)]: ['07:00', '12:00', '16:00', '18:00'],
+          [getDateString(1)]: ['08:00', '11:00', '14:00', '17:00'],
+          [getDateString(2)]: ['09:00', '13:00', '15:00', '19:00'],
+        },
       },
-    },
-  ];
+    ];
+  };
 
   function getDateString(daysFromNow: number): string {
     const date = new Date();
@@ -185,11 +193,18 @@ export function BookSessionModal({
         traineeId: user?.uid || 'demo',
         trainerId: selectedTrainer.id,
         trainerName: selectedTrainer.name,
+        // New standard fields (required)
+        type: sessionType === 'personal' ? 'personal_training' : 'group_training',
+        scheduledDate: selectedDate,
+        startTime: selectedTime,
+        duration: 60, // Default 60 minutes
+        sessionRate: selectedTrainer.pricePerHour,
+        // Legacy fields (for backward compatibility)
         sessionType: sessionGoal || sessionType,
         date: selectedDate,
         time: selectedTime,
-        duration: 60, // Default 60 minutes
         price: selectedTrainer.pricePerHour,
+        // Additional fields
         goals: sessionGoal ? [sessionGoal] : [],
         notes,
       };
@@ -218,20 +233,23 @@ export function BookSessionModal({
   };
 
   const resetForm = () => {
-    setSelectedTrainer(null);
     setSelectedDate('');
     setSelectedTime('');
     setSessionType('personal');
     setSessionGoal('');
     setNotes('');
     setStep('trainers');
+    // Don't reset selectedTrainer - keep the real trainer selected
   };
 
   const renderTrainerStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Choose Your Trainer</Text>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {trainers.map(trainer => (
+      {loading ? (
+        <ActivityIndicator size="large" color="#2563EB" />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {getTrainersList().map(trainer => (
           <TouchableOpacity
             key={trainer.id}
             style={[
@@ -260,8 +278,9 @@ export function BookSessionModal({
               ))}
             </View>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 

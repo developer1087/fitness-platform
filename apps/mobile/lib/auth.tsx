@@ -1,7 +1,7 @@
 import { LoginFormData, SignupFormData, PhoneLoginFormData, PhoneSignupFormData } from './shared-types';
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendPasswordResetEmail, signInWithPhoneNumber, FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { getFirestore, collection, doc, setDoc } from '@react-native-firebase/firestore';
 import TraineeService from './traineeService';
 
 // Type alias for User
@@ -12,10 +12,14 @@ type ConfirmationResult = FirebaseAuthTypes.ConfirmResult;
 
 // Production Firebase Auth Service
 export class AuthService {
+  private static auth = getAuth();
+  private static db = getFirestore();
+
   static async signIn(credentials: LoginFormData): Promise<{ user: User }> {
     try {
       console.log('🔐 Signing in with Firebase:', credentials.email);
-      const userCredential = await auth().signInWithEmailAndPassword(
+      const userCredential = await signInWithEmailAndPassword(
+        this.auth,
         credentials.email,
         credentials.password
       );
@@ -50,7 +54,8 @@ export class AuthService {
   static async signUp(credentials: SignupFormData): Promise<{ user: User }> {
     try {
       console.log('📝 Creating Firebase account:', credentials.email);
-      const userCredential = await auth().createUserWithEmailAndPassword(
+      const userCredential = await createUserWithEmailAndPassword(
+        this.auth,
         credentials.email,
         credentials.password
       );
@@ -61,10 +66,8 @@ export class AuthService {
       const now = new Date().toISOString();
 
       try {
-        await firestore()
-          .collection('users')
-          .doc(uid)
-          .set({
+        const userRef = doc(this.db, 'users', uid);
+        await setDoc(userRef, {
             email: credentials.email,
             firstName: credentials.firstName,
             lastName: credentials.lastName,
@@ -121,7 +124,7 @@ export class AuthService {
   static async signOut(): Promise<void> {
     try {
       console.log('🚪 Signing out from Firebase');
-      await auth().signOut();
+      await firebaseSignOut(this.auth);
       console.log('✅ Firebase sign out successful');
     } catch (error) {
       console.error('❌ Firebase sign out error:', error);
@@ -130,13 +133,13 @@ export class AuthService {
   }
 
   static getCurrentUser(): User | null {
-    return auth().currentUser;
+    return this.auth.currentUser;
   }
 
   static async resetPassword(email: string): Promise<void> {
     try {
       console.log('📧 Sending password reset email:', email);
-      await auth().sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(this.auth, email);
       console.log('✅ Password reset email sent');
     } catch (error: any) {
       console.error('❌ Password reset error:', error);
@@ -177,7 +180,7 @@ export class AuthService {
         ? phoneNumber
         : `+972${phoneNumber.substring(1)}`; // Remove leading 0 and add +972
 
-      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+      const confirmation = await signInWithPhoneNumber(this.auth, formattedPhone);
       console.log('✅ Verification code sent to:', formattedPhone);
 
       return confirmation;
@@ -255,15 +258,18 @@ export class AuthService {
    * Complete phone number signup with verification code
    * Creates user account and Firestore profile
    */
-  static async signUpWithPhone(credentials: PhoneSignupFormData): Promise<{ user: User }> {
+  static async signUpWithPhone(credentials: PhoneSignupFormData, invitationToken?: string): Promise<{ user: User }> {
     try {
       console.log('📝 Creating phone auth account:', credentials.phoneNumber);
+      if (invitationToken) {
+        console.log('🎟️ Signup includes invitation token:', invitationToken);
+      }
 
       // Note: The phone number verification should already be done via sendPhoneVerification
       // This method should be called AFTER successful verification
       // The user is already signed in at this point from verifyPhoneCode
 
-      const currentUser = auth().currentUser;
+      const currentUser = this.auth.currentUser;
       if (!currentUser) {
         throw new Error('No authenticated user found. Please verify phone number first.');
       }
@@ -278,10 +284,8 @@ export class AuthService {
         : `+972${credentials.phoneNumber.substring(1)}`;
 
       try {
-        await firestore()
-          .collection('users')
-          .doc(uid)
-          .set({
+        const userRef = doc(this.db, 'users', uid);
+        await setDoc(userRef, {
             phoneNumber: formattedPhone,
             email: null, // Phone auth doesn't have email
             firstName: credentials.firstName,
@@ -303,13 +307,25 @@ export class AuthService {
           });
         console.log('✅ Firestore user document created:', uid);
 
-        // Update trainee status from pending to active
-        try {
-          await TraineeService.updateTraineeStatus(uid, 'active');
-          console.log('✅ Trainee status updated to active');
-        } catch (traineeError) {
-          console.warn('⚠️ Could not update trainee status (trainee might not exist yet):', traineeError);
-          // Don't fail signup if trainee status update fails
+        // If invitation token provided, accept the invitation
+        if (invitationToken) {
+          try {
+            await TraineeService.acceptInvitation(invitationToken, uid);
+            console.log('✅ Invitation accepted successfully');
+          } catch (invitationError) {
+            console.error('❌ Failed to accept invitation:', invitationError);
+            // Don't fail signup if invitation acceptance fails
+            // The trainee can still use the app, just won't be linked to trainer
+          }
+        } else {
+          // No invitation token - try to update by phone number (link trainee to userId)
+          try {
+            await TraineeService.updateTraineeByPhone(formattedPhone, uid, 'active');
+            console.log('✅ Trainee linked to userId and status updated to active');
+          } catch (traineeError) {
+            console.warn('⚠️ Could not update trainee by phone (trainee might not exist yet):', traineeError);
+            // Don't fail signup if trainee status update fails
+          }
         }
       } catch (firestoreError) {
         console.error('❌ Firestore document creation error:', firestoreError);
@@ -333,7 +349,7 @@ export class AuthService {
     try {
       console.log('📱 Phone sign in:', credentials.phoneNumber);
 
-      const currentUser = auth().currentUser;
+      const currentUser = this.auth.currentUser;
       if (!currentUser) {
         throw new Error('No authenticated user found. Please verify phone number first.');
       }
@@ -373,8 +389,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     console.log('🔄 Setting up Firebase auth state listener');
 
+    const auth = getAuth();
     // Listen to Firebase auth state changes
-    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log('🔄 Firebase auth state changed:', firebaseUser?.uid || 'no user');
       setUser(firebaseUser);
       setLoading(false);

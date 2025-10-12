@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import firestore from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDocs, query, where } from '@react-native-firebase/firestore';
 
 export interface Session {
   id: string;
@@ -97,6 +97,7 @@ function normalizeSession(session: any): Session {
 class SessionService {
   private readonly SESSIONS_KEY = 'user_sessions';
   private readonly TRAINEE_PROFILE_KEY = 'trainee_profile';
+  private readonly db = getFirestore();
 
   async bookSession(sessionData: Omit<Session, 'id' | 'createdAt' | 'status' | 'updatedAt'>): Promise<Session> {
     try {
@@ -131,10 +132,8 @@ class SessionService {
       };
 
       // Save to Firestore with all fields
-      await firestore()
-        .collection('sessions')
-        .doc(newSession.id)
-        .set(newSession);
+      const sessionRef = doc(this.db, 'sessions', newSession.id);
+      await setDoc(sessionRef, newSession);
 
       console.log('✅ Session saved to Firestore:', newSession.id);
 
@@ -161,15 +160,14 @@ class SessionService {
     try {
       // First, try to fetch from Firestore (source of truth)
       try {
-        const firestoreSessions = await firestore()
-          .collection('sessions')
-          .where('traineeId', '==', userId)
-          .get();
+        const sessionsCollection = collection(this.db, 'sessions');
+        const q = query(sessionsCollection, where('traineeId', '==', userId));
+        const firestoreSessions = await getDocs(q);
 
         if (!firestoreSessions.empty) {
-          const sessions = firestoreSessions.docs.map(doc => {
-            const data = doc.data();
-            return normalizeSession({ id: doc.id, ...data });
+          const sessions = firestoreSessions.docs.map(document => {
+            const data = document.data();
+            return normalizeSession({ id: document.id, ...data });
           });
 
           // Cache in AsyncStorage for offline access
