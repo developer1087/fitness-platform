@@ -1,24 +1,41 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import firestore from '@react-native-firebase/firestore';
 
 export interface Session {
   id: string;
   traineeId: string;
   trainerId: string;
   trainerName: string;
-  sessionType: string;
-  date: string;
-  time: string;
-  duration: number;
-  price: number;
-  status: 'scheduled' | 'completed' | 'cancelled';
+
+  // Standard fields (matching web app)
+  type: string;  // Session type: 'personal_training', 'group_training', etc.
+  scheduledDate: string;  // YYYY-MM-DD format
+  startTime: string;  // HH:MM format (24-hour)
+  duration: number;  // Duration in minutes
+
+  // Legacy fields (for backward compatibility)
+  sessionType?: string;  // Deprecated: use 'type' instead
+  date?: string;  // Deprecated: use 'scheduledDate' instead
+  time?: string;  // Deprecated: use 'startTime' instead
+
+  // Additional fields
+  title?: string;
+  description?: string;
+  location?: string;
+  sessionRate?: number;  // Price/rate for the session
+  price?: number;  // Legacy: use 'sessionRate' instead
+
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   goals?: string[];
   notes?: string;
+  trainerNotes?: string;
   feedback?: {
     trainerNotes: string;
     traineeRating: number;
     traineeComment: string;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TraineeProfile {
@@ -56,19 +73,72 @@ export interface TraineeProfile {
   pastSessions: Session[];
 }
 
+// Helper to normalize session data (handles both old and new formats)
+function normalizeSession(session: any): Session {
+  return {
+    ...session,
+    // Ensure standard fields exist
+    type: session.type || session.sessionType || 'personal_training',
+    scheduledDate: session.scheduledDate || session.date || '',
+    startTime: session.startTime || session.time || '',
+    duration: session.duration || 60,
+    sessionRate: session.sessionRate ?? session.price ?? 0,
+    location: session.location || 'Studio',
+    title: session.title || `${session.type || session.sessionType || 'Training'} Session`,
+
+    // Keep legacy fields for backward compatibility
+    sessionType: session.sessionType || session.type,
+    date: session.date || session.scheduledDate,
+    time: session.time || session.startTime,
+    price: session.price ?? session.sessionRate ?? 0,
+  };
+}
+
 class SessionService {
   private readonly SESSIONS_KEY = 'user_sessions';
   private readonly TRAINEE_PROFILE_KEY = 'trainee_profile';
 
-  async bookSession(sessionData: Omit<Session, 'id' | 'createdAt' | 'status'>): Promise<Session> {
+  async bookSession(sessionData: Omit<Session, 'id' | 'createdAt' | 'status' | 'updatedAt'>): Promise<Session> {
     try {
-      const newSession: Session = {
+      const now = new Date().toISOString();
+
+      // Ensure we have the required fields in the correct format
+      const normalizedSession = {
         ...sessionData,
-        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        status: 'scheduled',
-        createdAt: new Date().toISOString(),
+        // Use standard fields (web app compatible)
+        type: sessionData.type || sessionData.sessionType || 'personal_training',
+        scheduledDate: sessionData.scheduledDate || sessionData.date || '',
+        startTime: sessionData.startTime || sessionData.time || '',
+        duration: sessionData.duration || 60,
+        sessionRate: sessionData.sessionRate || sessionData.price || 0,
+        location: sessionData.location || 'Studio',
+        title: sessionData.title || `${sessionData.type || 'Training'} Session`,
+        description: sessionData.description || '',
+
+        // Keep legacy fields for backward compatibility
+        sessionType: sessionData.type || sessionData.sessionType,
+        date: sessionData.scheduledDate || sessionData.date,
+        time: sessionData.startTime || sessionData.time,
+        price: sessionData.sessionRate || sessionData.price,
       };
 
+      const newSession: Session = {
+        ...normalizedSession,
+        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        status: 'scheduled',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Save to Firestore with all fields
+      await firestore()
+        .collection('sessions')
+        .doc(newSession.id)
+        .set(newSession);
+
+      console.log('✅ Session saved to Firestore:', newSession.id);
+
+      // Also save to AsyncStorage for offline access
       const existingSessions = await this.getUserSessions(sessionData.traineeId);
       const updatedSessions = [...existingSessions, newSession];
 
@@ -89,8 +159,39 @@ class SessionService {
 
   async getUserSessions(userId: string): Promise<Session[]> {
     try {
+      // First, try to fetch from Firestore (source of truth)
+      try {
+        const firestoreSessions = await firestore()
+          .collection('sessions')
+          .where('traineeId', '==', userId)
+          .get();
+
+        if (!firestoreSessions.empty) {
+          const sessions = firestoreSessions.docs.map(doc => {
+            const data = doc.data();
+            return normalizeSession({ id: doc.id, ...data });
+          });
+
+          // Cache in AsyncStorage for offline access
+          await AsyncStorage.setItem(
+            `${this.SESSIONS_KEY}_${userId}`,
+            JSON.stringify(sessions)
+          );
+
+          return sessions;
+        }
+      } catch (firestoreError) {
+        console.warn('Firestore fetch failed, falling back to AsyncStorage:', firestoreError);
+      }
+
+      // Fallback to AsyncStorage (offline mode)
       const sessionsData = await AsyncStorage.getItem(`${this.SESSIONS_KEY}_${userId}`);
-      return sessionsData ? JSON.parse(sessionsData) : [];
+      if (sessionsData) {
+        const sessions = JSON.parse(sessionsData);
+        return sessions.map(normalizeSession);
+      }
+
+      return [];
     } catch (error) {
       console.error('Error getting user sessions:', error);
       return [];
