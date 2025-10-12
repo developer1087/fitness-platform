@@ -1,4 +1,4 @@
-import firestore from '@react-native-firebase/firestore';
+import { getFirestore, collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, onSnapshot, writeBatch } from '@react-native-firebase/firestore';
 
 export interface Message {
   id: string;
@@ -42,6 +42,7 @@ export interface MessageTemplate {
 class MessagingService {
   private readonly CONVERSATIONS_COLLECTION = 'conversations';
   private readonly MESSAGES_COLLECTION = 'messages';
+  private readonly db = getFirestore();
 
   // Pre-defined message templates for trainers
   private messageTemplates: MessageTemplate[] = [
@@ -94,9 +95,8 @@ class MessagingService {
       };
 
       // Save message to Firestore
-      const messageRef = await firestore()
-        .collection(this.MESSAGES_COLLECTION)
-        .add(message);
+      const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+      const messageRef = await addDoc(messagesCollection, message);
 
       message.id = messageRef.id;
 
@@ -126,10 +126,8 @@ class MessagingService {
       };
 
       // Update or create conversation in Firestore
-      await firestore()
-        .collection(this.CONVERSATIONS_COLLECTION)
-        .doc(message.conversationId)
-        .set(conversation, { merge: true });
+      const conversationRef = doc(this.db, this.CONVERSATIONS_COLLECTION, message.conversationId);
+      await setDoc(conversationRef, conversation, { merge: true });
 
       console.log('✅ Conversation updated:', message.conversationId);
     } catch (error) {
@@ -140,11 +138,13 @@ class MessagingService {
 
   async getConversationMessages(conversationId: string): Promise<Message[]> {
     try {
-      const messagesSnapshot = await firestore()
-        .collection(this.MESSAGES_COLLECTION)
-        .where('conversationId', '==', conversationId)
-        .orderBy('timestamp', 'asc')
-        .get();
+      const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+      const q = query(
+        messagesCollection,
+        where('conversationId', '==', conversationId),
+        orderBy('timestamp', 'asc')
+      );
+      const messagesSnapshot = await getDocs(q);
 
       const messages: Message[] = messagesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -165,22 +165,26 @@ class MessagingService {
     conversationId: string,
     callback: (messages: Message[]) => void
   ): () => void {
-    const unsubscribe = firestore()
-      .collection(this.MESSAGES_COLLECTION)
-      .where('conversationId', '==', conversationId)
-      .orderBy('timestamp', 'asc')
-      .onSnapshot(
-        (snapshot) => {
-          const messages: Message[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Message));
-          callback(messages);
-        },
-        (error) => {
-          console.error('❌ Error listening to messages:', error);
-        }
-      );
+    const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+    const q = query(
+      messagesCollection,
+      where('conversationId', '==', conversationId),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const messages: Message[] = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Message));
+        callback(messages);
+      },
+      (error) => {
+        console.error('❌ Error listening to messages:', error);
+      }
+    );
 
     return unsubscribe;
   }
@@ -189,11 +193,13 @@ class MessagingService {
     try {
       const field = userType === 'trainer' ? 'trainerId' : 'traineeId';
 
-      const conversationsSnapshot = await firestore()
-        .collection(this.CONVERSATIONS_COLLECTION)
-        .where(field, '==', userId)
-        .orderBy('lastActivity', 'desc')
-        .get();
+      const conversationsCollection = collection(this.db, this.CONVERSATIONS_COLLECTION);
+      const q = query(
+        conversationsCollection,
+        where(field, '==', userId),
+        orderBy('lastActivity', 'desc')
+      );
+      const conversationsSnapshot = await getDocs(q);
 
       const conversations: Conversation[] = conversationsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -223,41 +229,47 @@ class MessagingService {
   ): () => void {
     const field = userType === 'trainer' ? 'trainerId' : 'traineeId';
 
-    const unsubscribe = firestore()
-      .collection(this.CONVERSATIONS_COLLECTION)
-      .where(field, '==', userId)
-      .orderBy('lastActivity', 'desc')
-      .onSnapshot(
-        async (snapshot) => {
-          const conversations: Conversation[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Conversation));
+    const conversationsCollection = collection(this.db, this.CONVERSATIONS_COLLECTION);
+    const q = query(
+      conversationsCollection,
+      where(field, '==', userId),
+      orderBy('lastActivity', 'desc')
+    );
 
-          // Calculate unread counts
-          for (const conv of conversations) {
-            const unreadCount = await this.getUnreadCount(conv.id, userId);
-            conv.unreadCount = unreadCount;
-          }
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const conversations: Conversation[] = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Conversation));
 
-          callback(conversations);
-        },
-        (error) => {
-          console.error('❌ Error listening to conversations:', error);
+        // Calculate unread counts
+        for (const conv of conversations) {
+          const unreadCount = await this.getUnreadCount(conv.id, userId);
+          conv.unreadCount = unreadCount;
         }
-      );
+
+        callback(conversations);
+      },
+      (error) => {
+        console.error('❌ Error listening to conversations:', error);
+      }
+    );
 
     return unsubscribe;
   }
 
   private async getUnreadCount(conversationId: string, userId: string): Promise<number> {
     try {
-      const unreadSnapshot = await firestore()
-        .collection(this.MESSAGES_COLLECTION)
-        .where('conversationId', '==', conversationId)
-        .where('recipientId', '==', userId)
-        .where('isRead', '==', false)
-        .get();
+      const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+      const q = query(
+        messagesCollection,
+        where('conversationId', '==', conversationId),
+        where('recipientId', '==', userId),
+        where('isRead', '==', false)
+      );
+      const unreadSnapshot = await getDocs(q);
 
       return unreadSnapshot.size;
     } catch (error) {
@@ -269,17 +281,19 @@ class MessagingService {
   async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
     try {
       // Get unread messages for this user
-      const unreadSnapshot = await firestore()
-        .collection(this.MESSAGES_COLLECTION)
-        .where('conversationId', '==', conversationId)
-        .where('recipientId', '==', userId)
-        .where('isRead', '==', false)
-        .get();
+      const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+      const q = query(
+        messagesCollection,
+        where('conversationId', '==', conversationId),
+        where('recipientId', '==', userId),
+        where('isRead', '==', false)
+      );
+      const unreadSnapshot = await getDocs(q);
 
       // Batch update all unread messages
-      const batch = firestore().batch();
-      unreadSnapshot.docs.forEach(doc => {
-        batch.update(doc.ref, { isRead: true });
+      const batch = writeBatch(this.db);
+      unreadSnapshot.docs.forEach(document => {
+        batch.update(document.ref, { isRead: true });
       });
 
       await batch.commit();
@@ -291,11 +305,13 @@ class MessagingService {
 
   async getTotalUnreadCount(userId: string): Promise<number> {
     try {
-      const unreadSnapshot = await firestore()
-        .collection(this.MESSAGES_COLLECTION)
-        .where('recipientId', '==', userId)
-        .where('isRead', '==', false)
-        .get();
+      const messagesCollection = collection(this.db, this.MESSAGES_COLLECTION);
+      const q = query(
+        messagesCollection,
+        where('recipientId', '==', userId),
+        where('isRead', '==', false)
+      );
+      const unreadSnapshot = await getDocs(q);
 
       return unreadSnapshot.size;
     } catch (error) {
@@ -319,10 +335,8 @@ class MessagingService {
       isActive: true
     };
 
-    await firestore()
-      .collection(this.CONVERSATIONS_COLLECTION)
-      .doc(conversationId)
-      .set(conversation, { merge: true });
+    const conversationRef = doc(this.db, this.CONVERSATIONS_COLLECTION, conversationId);
+    await setDoc(conversationRef, conversation, { merge: true });
 
     console.log('✅ Conversation created:', conversationId);
     return conversationId;
