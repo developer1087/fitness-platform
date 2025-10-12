@@ -67,9 +67,9 @@ export default function HomeScreen() {
       const upcoming = sessions
         .filter(session =>
           session.status === 'scheduled' &&
-          session.date >= todayDate
+          session.scheduledDate >= todayDate
         )
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
         .slice(0, 3); // Show only next 3 sessions
       setUpcomingSessions(upcoming);
     } catch (error) {
@@ -181,10 +181,10 @@ export default function HomeScreen() {
             upcomingSessions.map((session) => (
               <View key={session.id} style={styles.workoutCard}>
                 <View style={styles.workoutInfo}>
-                  <Text style={styles.workoutTitle}>{session.sessionType}</Text>
-                  <Text style={styles.workoutTrainer}>with {session.trainerName}</Text>
+                  <Text style={styles.workoutTitle}>{session.title || session.type?.replace('_', ' ') || 'Training Session'}</Text>
+                  <Text style={styles.workoutTrainer}>with {session.trainerName || 'Your Trainer'}</Text>
                   <Text style={styles.workoutTime}>
-                    {new Date(session.date).toLocaleDateString()} at {session.time} • {session.duration} min
+                    {new Date(session.scheduledDate).toLocaleDateString()} at {session.startTime} • {session.duration} min
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.joinButton}>
