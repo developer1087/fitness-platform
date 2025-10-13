@@ -123,6 +123,20 @@ class SessionService {
         price: sessionData.sessionRate || sessionData.price,
       };
 
+      // VALIDATION: Check for scheduling conflicts with existing sessions
+      const conflicts = await this.checkForConflicts(
+        normalizedSession.trainerId,
+        normalizedSession.scheduledDate,
+        normalizedSession.startTime,
+        normalizedSession.duration
+      );
+
+      if (conflicts.length > 0) {
+        throw new Error(
+          `This time slot is already booked (${conflicts[0].startTime}). Please choose a different time.`
+        );
+      }
+
       const newSession: Session = {
         ...normalizedSession,
         id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -153,6 +167,59 @@ class SessionService {
     } catch (error) {
       console.error('Error booking session:', error);
       throw error;
+    }
+  }
+
+  // Check for scheduling conflicts
+  private async checkForConflicts(
+    trainerId: string,
+    date: string,
+    startTime: string,
+    duration: number
+  ): Promise<Session[]> {
+    try {
+      const sessionsCollection = collection(this.db, 'sessions');
+      const q = query(
+        sessionsCollection,
+        where('trainerId', '==', trainerId),
+        where('scheduledDate', '==', date)
+      );
+      const snapshot = await getDocs(q);
+
+      const conflicts: Session[] = [];
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const endTime = new Date();
+      endTime.setHours(startHour, startMinute + duration);
+      const endTimeStr = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+
+      snapshot.forEach((document) => {
+        const session = { id: document.id, ...document.data() } as Session;
+
+        // Skip cancelled or no_show sessions
+        if (session.status === 'cancelled' || session.status === 'no_show') {
+          return;
+        }
+
+        // Calculate session end time
+        const [sessStartHour, sessStartMinute] = session.startTime.split(':').map(Number);
+        const sessEndTime = new Date();
+        sessEndTime.setHours(sessStartHour, sessStartMinute + session.duration);
+        const sessEndTimeStr = `${sessEndTime.getHours().toString().padStart(2, '0')}:${sessEndTime.getMinutes().toString().padStart(2, '0')}`;
+
+        // Check for time overlap
+        if (
+          (startTime >= session.startTime && startTime < sessEndTimeStr) ||
+          (endTimeStr > session.startTime && endTimeStr <= sessEndTimeStr) ||
+          (startTime <= session.startTime && endTimeStr >= sessEndTimeStr)
+        ) {
+          conflicts.push(session);
+        }
+      });
+
+      return conflicts;
+    } catch (error) {
+      console.error('Error checking for conflicts:', error);
+      return []; // Return empty array on error to allow booking
     }
   }
 
