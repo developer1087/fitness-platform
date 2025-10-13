@@ -32,6 +32,76 @@ service cloud.firestore {
         (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
     }
 
+    // Availability Slots - trainers can manage their own availability
+    match /availability_slots/{slotId} {
+      allow read: if request.auth != null; // Anyone authenticated can view availability
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Booking Slots - trainers manage their slots, trainees can read to book
+    match /booking_slots/{bookingId} {
+      allow read: if request.auth != null; // Anyone authenticated can view booking slots
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId ||
+         request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId ||
+         request.auth.uid == request.resource.data.traineeId);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Recurring Bookings - trainers manage their recurring patterns
+    match /recurring_bookings/{recurringId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Calendar Settings - trainers manage their own calendar settings
+    match /calendar_settings/{trainerId} {
+      allow read: if request.auth != null; // Anyone can view calendar settings
+      allow write: if request.auth != null && request.auth.uid == trainerId;
+    }
+
+    // Session Templates - trainers manage their own templates
+    match /session_templates/{templateId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Personal Records - trainers can manage, trainees can read their own
+    match /personal_records/{recordId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+    }
+
+    // Messages - users can read and write their own conversations
+    match /messages/{messageId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
+    }
+
+    // Conversations - users can read their own conversations
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+    }
+
     // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;
