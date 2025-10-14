@@ -111,6 +111,18 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      console.log('🚪 Signing out...');
+      await signOut();
+      console.log('✅ Sign out successful');
+      // Navigation to auth screen will happen automatically via auth state change
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      // You could show an alert here if needed
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -128,7 +140,7 @@ export default function HomeScreen() {
               <Text style={styles.messageIcon}>💬</Text>
               <MessageNotificationBadge userType="trainee" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={signOut} style={styles.signOutButton}>
+            <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
