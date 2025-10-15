@@ -299,6 +299,46 @@ export const workoutTemplates = [
   },
 ];
 
+// Session types for training sessions
+export type SessionType =
+  | 'personal_training' // 1-on-1 training
+  | 'group_training'    // Group class
+  | 'assessment'        // Fitness assessment
+  | 'consultation'      // Discussion/planning
+  | 'follow_up';        // Follow-up session
+
+export type SessionStatus =
+  | 'scheduled'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show'
+  | 'rescheduled';
+
+export type SessionFormat = 'in_person' | 'remote' | 'hybrid';
+
+export interface TrainingSession {
+  id: string;
+  trainerId: string;
+  traineeId: string;
+  title: string;
+  description?: string;
+  type: SessionType;
+  status: SessionStatus;
+  scheduledDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime?: string;
+  duration: number; // minutes
+  location?: string;
+  sessionFormat?: SessionFormat; // How the session is conducted
+  meetingLink?: string; // Video call URL for remote sessions
+  sessionRate?: number;
+  isPaid: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Infer types from schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;

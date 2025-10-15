@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
@@ -124,25 +125,67 @@ export default function HomeScreen() {
     }
   };
 
-  const handleJoinSession = (session: any) => {
-    // TODO: In the future, check if session has a meetingLink field
-    // If it does, open the video call URL (Zoom, Google Meet, etc.)
-    // For now, show a placeholder message
-
+  const handleJoinSession = async (session: any) => {
     const sessionDate = new Date(session.scheduledDate);
     const sessionDateStr = sessionDate.toLocaleDateString();
 
-    Alert.alert(
-      'Session Details',
-      `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
-      `Date: ${sessionDateStr} at ${session.startTime}\n` +
-      `Duration: ${session.duration} minutes\n` +
-      `Location: ${session.location || 'Not specified'}\n\n` +
-      `Video call integration coming soon!`,
-      [
-        { text: 'OK', style: 'default' }
-      ]
-    );
+    // Check if this is a remote session with a meeting link
+    if (session.meetingLink && (session.sessionFormat === 'remote' || session.sessionFormat === 'hybrid')) {
+      try {
+        // Try to open the meeting link
+        const canOpen = await Linking.canOpenURL(session.meetingLink);
+
+        if (canOpen) {
+          Alert.alert(
+            'Join Remote Session',
+            `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
+            `Date: ${sessionDateStr} at ${session.startTime}\n\n` +
+            `Opening video call link...`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Join Call',
+                onPress: async () => {
+                  await Linking.openURL(session.meetingLink);
+                  console.log('📹 Opened meeting link:', session.meetingLink);
+                }
+              }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Invalid Link',
+            'The meeting link for this session appears to be invalid. Please contact your trainer.',
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening meeting link:', error);
+        Alert.alert(
+          'Error',
+          'Could not open the meeting link. Please try again or contact your trainer.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } else {
+      // In-person session - show session details
+      Alert.alert(
+        'Session Details',
+        `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
+        `Date: ${sessionDateStr} at ${session.startTime}\n` +
+        `Duration: ${session.duration} minutes\n` +
+        `Location: ${session.location || 'Not specified'}\n\n` +
+        (session.sessionFormat === 'in_person'
+          ? 'This is an in-person session. See you at the location!'
+          : 'This session doesn\'t have a video call link yet.'),
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    }
 
     console.log('📹 Join session pressed:', session.id);
   };
