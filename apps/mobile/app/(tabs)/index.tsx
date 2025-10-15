@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
@@ -123,6 +124,29 @@ export default function HomeScreen() {
     }
   };
 
+  const handleJoinSession = (session: any) => {
+    // TODO: In the future, check if session has a meetingLink field
+    // If it does, open the video call URL (Zoom, Google Meet, etc.)
+    // For now, show a placeholder message
+
+    const sessionDate = new Date(session.scheduledDate);
+    const sessionDateStr = sessionDate.toLocaleDateString();
+
+    Alert.alert(
+      'Session Details',
+      `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
+      `Date: ${sessionDateStr} at ${session.startTime}\n` +
+      `Duration: ${session.duration} minutes\n` +
+      `Location: ${session.location || 'Not specified'}\n\n` +
+      `Video call integration coming soon!`,
+      [
+        { text: 'OK', style: 'default' }
+      ]
+    );
+
+    console.log('📹 Join session pressed:', session.id);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -199,7 +223,10 @@ export default function HomeScreen() {
                     {new Date(session.scheduledDate).toLocaleDateString()} at {session.startTime} • {session.duration} min
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.joinButton}>
+                <TouchableOpacity
+                  style={styles.joinButton}
+                  onPress={() => handleJoinSession(session)}
+                >
                   <Text style={styles.joinButtonText}>Join</Text>
                 </TouchableOpacity>
               </View>
