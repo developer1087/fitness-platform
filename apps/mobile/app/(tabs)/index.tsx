@@ -72,7 +72,7 @@ export default function HomeScreen() {
           session.scheduledDate >= todayDate
         )
         .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-        .slice(0, 3); // Show only next 3 sessions
+        .slice(0, 10); // Show next 10 sessions
       setUpcomingSessions(upcoming);
     } catch (error) {
       console.error('Error loading upcoming sessions:', error);
