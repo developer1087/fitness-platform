@@ -26,41 +26,20 @@ jobs:
           package-lock.json
           apps/web/package-lock.json
 
-    - name: Install dependencies
-      run: npm ci
+    # Production deploy disabled - this repo is for mobile app only
+    # Web app is in separate repo (fitness-platform-web) with Vercel auto-deploy
+    # Mobile app builds happen locally via: npx expo run:android --variant release
 
-    - name: Install web dependencies
+    - name: Check repository structure
       run: |
-        cd apps/web
-        npm ci
+        echo "✅ This is the mobile app repository"
+        echo "📱 Mobile app location: apps/mobile/"
+        echo "🌐 Web app is deployed from: fitness-platform-web repo (Vercel)"
+        echo "🌐 Landing page is deployed from: fitness-platform-landing repo (Vercel)"
+        ls -la apps/mobile/
 
-    - name: Run tests
-      run: npm run test
-
-    - name: Build web application
+    - name: Notify
       run: |
-        cd apps/web
-        npm run build
-
-    - name: Setup Firebase CLI
-      uses: w9jds/setup-firebase@main
-      with:
-        tools: cli
-        firebase_token: ${{ secrets.FIREBASE_TOKEN }}
-
-    - name: Configure production environment
-      run: |
-        cp firebase.prod.json firebase.json
-        cp firestore.prod.rules firestore.rules
-
-    - name: Deploy to Firebase
-      env:
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-      run: |
-        firebase deploy --project fitness-platform-prod --non-interactive
-
-    - name: Notify deployment success
-      if: success()
-      run: |
-        echo "🎉 Production deployment successful!"
-        echo "🌐 Live at: https://fitness-platform-prod.firebaseapp.com"
+        echo "ℹ️  This workflow is disabled"
+        echo "ℹ️  Mobile APK builds happen locally"
+        echo "ℹ️  Web deployments happen via Vercel on push to fitness-platform-web repo"
