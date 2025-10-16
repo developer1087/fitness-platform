@@ -18,9 +18,10 @@ type ConfirmationResult = FirebaseAuthTypes.ConfirmResult;
 interface PhoneAuthScreenProps {
   onSuccess: () => void;
   onSwitchToEmail: () => void;
+  invitationToken?: string | null;
 }
 
-export default function PhoneAuthScreen({ onSuccess, onSwitchToEmail }: PhoneAuthScreenProps) {
+export default function PhoneAuthScreen({ onSuccess, onSwitchToEmail, invitationToken }: PhoneAuthScreenProps) {
   // Phone input state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -32,6 +33,13 @@ export default function PhoneAuthScreen({ onSuccess, onSwitchToEmail }: PhoneAut
   const [loading, setLoading] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Log invitation token if provided
+  React.useEffect(() => {
+    if (invitationToken) {
+      console.log('🎟️ PhoneAuthScreen received invitation token:', invitationToken);
+    }
+  }, [invitationToken]);
 
   // Format phone number as user types (05X-XXX-XXXX)
   const formatPhoneNumber = (text: string) => {
@@ -140,12 +148,19 @@ export default function PhoneAuthScreen({ onSuccess, onSwitchToEmail }: PhoneAut
       const cleanPhone = phoneNumber.replace(/\D/g, '');
 
       console.log('Completing signup for:', cleanPhone);
-      await AuthService.signUpWithPhone({
-        phoneNumber: cleanPhone,
-        verificationCode,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-      });
+      if (invitationToken) {
+        console.log('🎟️ Including invitation token in signup');
+      }
+
+      await AuthService.signUpWithPhone(
+        {
+          phoneNumber: cleanPhone,
+          verificationCode,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        },
+        invitationToken || undefined
+      );
 
       onSuccess();
     } catch (err) {

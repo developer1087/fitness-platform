@@ -171,13 +171,45 @@ export class TraineeService {
   }
 
   /**
+   * Update trainee by phone number and link to userId
+   * This is used when trainee signs up without an invitation token
+   */
+  static async updateTraineeByPhone(
+    phoneNumber: string,
+    userId: string,
+    status: 'pending' | 'active' | 'inactive'
+  ): Promise<void> {
+    try {
+      const trainee = await this.getTraineeByPhone(phoneNumber);
+      if (!trainee) {
+        console.log('No trainee found for phone:', phoneNumber);
+        return;
+      }
+
+      await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .doc(trainee.id)
+        .update({
+          userId,
+          status,
+          updatedAt: new Date().toISOString(),
+        });
+
+      console.log(`✅ Trainee linked to userId and status updated to: ${status}`);
+    } catch (error) {
+      console.error('Error updating trainee by phone:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get trainee by phone number
    */
   static async getTraineeByPhone(phoneNumber: string): Promise<TraineeData | null> {
     try {
       const querySnapshot = await firestore()
         .collection(this.TRAINEES_COLLECTION)
-        .where('phoneNumber', '==', phoneNumber)
+        .where('phone', '==', phoneNumber)
         .get();
 
       if (querySnapshot.empty) {
@@ -192,6 +224,79 @@ export class TraineeService {
       } as TraineeData;
     } catch (error) {
       console.error('Error fetching trainee by phone:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Accept invitation and update trainee status to active
+   * This is called after trainee completes phone auth signup
+   */
+  static async acceptInvitation(invitationToken: string, userId: string): Promise<void> {
+    try {
+      console.log('🎟️ Accepting invitation with token:', invitationToken);
+
+      // Get invitation by token
+      const invitationsSnapshot = await firestore()
+        .collection('trainee_invitations')
+        .where('inviteToken', '==', invitationToken)
+        .where('status', '==', 'pending')
+        .get();
+
+      if (invitationsSnapshot.empty) {
+        console.warn('⚠️ No pending invitation found for token:', invitationToken);
+        throw new Error('Invalid or expired invitation token');
+      }
+
+      const invitationDoc = invitationsSnapshot.docs[0];
+      const invitationId = invitationDoc.id;
+
+      // Update invitation status to accepted
+      await firestore()
+        .collection('trainee_invitations')
+        .doc(invitationId)
+        .update({
+          status: 'accepted',
+          acceptedAt: new Date().toISOString(),
+        });
+
+      console.log('✅ Invitation marked as accepted:', invitationId);
+
+      // Find trainee record by invitationId
+      const traineesSnapshot = await firestore()
+        .collection(this.TRAINEES_COLLECTION)
+        .where('invitationId', '==', invitationId)
+        .get();
+
+      if (!traineesSnapshot.empty) {
+        const traineeDoc = traineesSnapshot.docs[0];
+
+        // Update trainee with userId and set status to active
+        await firestore()
+          .collection(this.TRAINEES_COLLECTION)
+          .doc(traineeDoc.id)
+          .update({
+            userId,
+            status: 'active',
+            updatedAt: new Date().toISOString(),
+          });
+
+        console.log('✅ Trainee status updated to active:', traineeDoc.id);
+
+        // Update user role to 'trainee' in users collection
+        await firestore()
+          .collection('users')
+          .doc(userId)
+          .update({
+            role: 'trainee',
+          });
+
+        console.log('✅ User role updated to trainee');
+      } else {
+        console.warn('⚠️ No trainee record found for invitationId:', invitationId);
+      }
+    } catch (error) {
+      console.error('❌ Error accepting invitation:', error);
       throw error;
     }
   }

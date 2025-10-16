@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../lib/auth';
 import { messagingService, Conversation } from '../../lib/messaging';
 import { ChatScreen } from './ChatScreen';
+import TraineeService from '../../lib/traineeService';
 
 interface ConversationsListProps {
   visible: boolean;
@@ -64,35 +65,50 @@ export function ConversationsList({
 
   const startNewConversation = async () => {
     try {
-      // For demo purposes, create a conversation with a mock user
-      const mockOtherUser = userType === 'trainer'
-        ? { id: 'trainee_demo', name: 'Demo Trainee', type: 'trainee' as const }
-        : { id: 'trainer_demo', name: 'Demo Trainer', type: 'trainer' as const };
+      if (userType === 'trainee') {
+        // Trainee - fetch their trainer
+        const trainer = await TraineeService.getTrainerByUserId(user?.uid || '');
 
-      const conversationId = await messagingService.createConversation(
-        userType === 'trainer' ? user?.uid || 'demo' : mockOtherUser.id,
-        userType === 'trainer' ? 'Trainer' : mockOtherUser.name,
-        userType === 'trainee' ? user?.uid || 'demo' : mockOtherUser.id,
-        userType === 'trainee' ? 'Trainee' : mockOtherUser.name
-      );
+        if (!trainer) {
+          Alert.alert(
+            'No Trainer Found',
+            'You need to be assigned to a trainer before you can send messages. Please contact support.'
+          );
+          return;
+        }
 
-      const newConversation: Conversation = {
-        id: conversationId,
-        trainerId: userType === 'trainer' ? user?.uid || 'demo' : mockOtherUser.id,
-        trainerName: userType === 'trainer' ? 'Trainer' : mockOtherUser.name,
-        traineeId: userType === 'trainee' ? user?.uid || 'demo' : mockOtherUser.id,
-        traineeName: userType === 'trainee' ? 'Trainee' : mockOtherUser.name,
-        lastMessage: null,
-        unreadCount: 0,
-        lastActivity: new Date().toISOString(),
-        isActive: true
-      };
+        const conversationId = await messagingService.createConversation(
+          trainer.id,
+          `${trainer.firstName} ${trainer.lastName}`,
+          user?.uid || '',
+          'Trainee' // We don't have trainee name here, could fetch from users collection if needed
+        );
 
-      setSelectedConversation(newConversation);
-      setShowChat(true);
+        const newConversation: Conversation = {
+          id: conversationId,
+          trainerId: trainer.id,
+          trainerName: `${trainer.firstName} ${trainer.lastName}`,
+          traineeId: user?.uid || '',
+          traineeName: 'Trainee',
+          lastMessage: null,
+          unreadCount: 0,
+          lastActivity: new Date().toISOString(),
+          isActive: true
+        };
+
+        setSelectedConversation(newConversation);
+        setShowChat(true);
+      } else {
+        // Trainer - would need to select from trainees list
+        // For now, show an alert
+        Alert.alert(
+          'Select Trainee',
+          'Please select a trainee from your trainees list to start a conversation.'
+        );
+      }
     } catch (error) {
       console.error('Error creating conversation:', error);
-      Alert.alert('Error', 'Failed to start new conversation');
+      Alert.alert('Error', 'Failed to start new conversation. ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 

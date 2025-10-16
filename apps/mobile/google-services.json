@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "388593504795-bup2absn579mj1pgoodqp5hg3m70f136.apps.googleusercontent.com",
+          "client_id": "388593504795-edrn1stj28p0shtao9tkoh6vejkqs07h.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.ryzup.fitness",
-            "certificate_hash": "20b371a7d6e1779d945ee81161348412bb048b5a"
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {

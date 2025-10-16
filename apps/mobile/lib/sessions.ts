@@ -151,6 +151,56 @@ class SessionService {
 
       console.log('✅ Session saved to Firestore:', newSession.id);
 
+      // CREATE INVOICE AND TRANSACTION for payment tracking
+      try {
+        const sessionDateTime = new Date(`${normalizedSession.scheduledDate}T${normalizedSession.startTime}`);
+        const cancellationDeadline = new Date(sessionDateTime);
+        cancellationDeadline.setHours(cancellationDeadline.getHours() - 24);
+
+        const now = new Date().toISOString();
+
+        // Create invoice
+        const invoice = {
+          trainerId: normalizedSession.trainerId,
+          traineeId: normalizedSession.traineeId,
+          sessionId: newSession.id,
+          type: 'session',
+          amount: normalizedSession.sessionRate || 0,
+          description: `${normalizedSession.type} session on ${normalizedSession.scheduledDate} at ${normalizedSession.startTime}`,
+          billingDate: cancellationDeadline.toISOString(),
+          dueDate: normalizedSession.scheduledDate,
+          status: 'pending',
+          cancellationDeadline: cancellationDeadline.toISOString(),
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const invoiceRef = doc(collection(this.db, 'invoices'));
+        await setDoc(invoiceRef, invoice);
+
+        console.log('✅ Invoice created:', invoiceRef.id);
+
+        // Create transaction record
+        const transaction = {
+          trainerId: normalizedSession.trainerId,
+          traineeId: normalizedSession.traineeId,
+          type: 'charge',
+          amount: normalizedSession.sessionRate || 0,
+          sessionId: newSession.id,
+          invoiceId: invoiceRef.id,
+          description: invoice.description,
+          createdAt: now,
+        };
+
+        const transactionRef = doc(collection(this.db, 'transactions'));
+        await setDoc(transactionRef, transaction);
+
+        console.log('✅ Transaction created:', transactionRef.id);
+      } catch (paymentError) {
+        console.warn('⚠️ Session created but payment processing failed:', paymentError);
+        // Don't fail the session creation if payment processing fails
+      }
+
       // Also save to AsyncStorage for offline access
       const existingSessions = await this.getUserSessions(sessionData.traineeId);
       const updatedSessions = [...existingSessions, newSession];

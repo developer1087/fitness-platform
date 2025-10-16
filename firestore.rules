@@ -12,10 +12,18 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
     }
 
-    // Trainees - trainers can manage their own trainees
+    // Trainees - trainers can manage their own trainees, trainees can read their own data
     match /trainees/{traineeId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.userId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+    }
+
+    // Trainers - trainers can read/write their own data, trainees can read their trainer's data
+    match /trainers/{trainerId} {
+      allow read: if request.auth != null; // Any authenticated user can read trainer profiles
+      allow write: if request.auth != null && request.auth.uid == trainerId;
     }
 
     // Workouts - users can manage their own workouts
@@ -26,10 +34,18 @@ service cloud.firestore {
 
     // Sessions - trainers can manage sessions for their trainees, trainees can read their own
     match /sessions/{sessionId} {
-      allow read, write: if request.auth != null &&
-        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      // Allow reading individual documents
+      allow get: if request.auth != null &&
+        (resource.data.trainerId == request.auth.uid || resource.data.traineeId == request.auth.uid);
+      // Allow queries/list operations (needed for conflict checking and viewing sessions)
+      // Any authenticated user can query sessions (e.g., trainees checking trainer availability)
+      allow list: if request.auth != null;
+      // Allow write operations
+      allow write: if request.auth != null &&
+        (resource.data.trainerId == request.auth.uid || resource.data.traineeId == request.auth.uid);
+      // Allow create operations
       allow create: if request.auth != null &&
-        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+        (request.resource.data.trainerId == request.auth.uid || request.resource.data.traineeId == request.auth.uid);
     }
 
     // Availability Slots - trainers can manage their own availability
@@ -119,19 +135,21 @@ service cloud.firestore {
         (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
     }
 
-    // Invoices - trainers can manage their invoices, trainees can read their own
+    // Invoices - trainers can manage their invoices, trainees can read their own and create when booking
     match /invoices/{invoiceId} {
       allow read: if request.auth != null &&
         (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
       allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
     }
 
-    // Payments - trainers can view their payments, trainees can view and create their own
+    // Payments - trainers can create/view their payments, trainees can view and create their own
     match /payments/{paymentId} {
       allow read: if request.auth != null &&
         (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.traineeId;
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
       allow update: if request.auth != null && request.auth.uid == resource.data.trainerId;
     }
 
