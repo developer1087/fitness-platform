@@ -18,10 +18,11 @@ A comprehensive fitness training management system with **three separate applica
 - ⚠️ **Be careful** - every change goes live immediately!
 
 ## Architecture Decisions
-- **Separate repositories** for each application (landing, web, mobile in monorepo)
+- **Separate repositories** for each application (landing, web, mobile)
+- **THIS REPOSITORY** contains only the mobile app - web apps are in separate repos
 - **Firebase-first backend** for real-time features and scalability
 - **Direct Firestore access** - Mobile app queries Firestore directly (no REST API)
-- **Vercel hosting** for web apps with auto-deployment on push
+- **Vercel hosting** for web apps with auto-deployment on push (separate repos)
 - **EAS Build** for mobile app distribution (download APK links)
 
 ## Tech Stack
@@ -59,13 +60,15 @@ A comprehensive fitness training management system with **three separate applica
 - **Deploy:** Vercel (auto-deploy on push to main)
 
 ### 3. Mobile App (Trainee App)
-- **Repo:** Part of `Fitness Platform` monorepo
+- **Repo:** `Fitness Platform` (THIS REPOSITORY - mobile-only)
 - **Location:** `/Users/avi/Desktop/Fitness Platform/apps/mobile`
 - **Branch:** `develop`
 - **Deploy:** EAS Build → Google Play Store
 - **Package:** `com.ryzup.fitness`
+- **GitHub:** `https://github.com/developer1087/fitness-platform.git`
+- **Note:** This repo does NOT deploy to Vercel (mobile-only)
 
-## Current Project Structure (Monorepo)
+## Current Project Structure (Mobile-Only Repository)
 ```
 Fitness Platform/
 ├── apps/
