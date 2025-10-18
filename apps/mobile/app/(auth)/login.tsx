@@ -20,12 +20,17 @@ export default function LoginPage() {
     router.push('/(auth)/signup');
   };
 
+  const handlePhoneAuth = () => {
+    router.push('/(auth)/phone-auth');
+  };
+
   return (
     <LoginScreen
       onLogin={handleLogin}
       loading={loading}
       onForgotPassword={handleForgotPassword}
       onSignUp={handleSignUp}
+      onPhoneAuth={handlePhoneAuth}
     />
   );
 }

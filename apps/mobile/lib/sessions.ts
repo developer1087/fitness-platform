@@ -1,24 +1,41 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFirestore, collection, doc, setDoc, getDocs, query, where } from '@react-native-firebase/firestore';
 
 export interface Session {
   id: string;
   traineeId: string;
   trainerId: string;
   trainerName: string;
-  sessionType: string;
-  date: string;
-  time: string;
-  duration: number;
-  price: number;
-  status: 'scheduled' | 'completed' | 'cancelled';
+
+  // Standard fields (matching web app)
+  type: string;  // Session type: 'personal_training', 'group_training', etc.
+  scheduledDate: string;  // YYYY-MM-DD format
+  startTime: string;  // HH:MM format (24-hour)
+  duration: number;  // Duration in minutes
+
+  // Legacy fields (for backward compatibility)
+  sessionType?: string;  // Deprecated: use 'type' instead
+  date?: string;  // Deprecated: use 'scheduledDate' instead
+  time?: string;  // Deprecated: use 'startTime' instead
+
+  // Additional fields
+  title?: string;
+  description?: string;
+  location?: string;
+  sessionRate?: number;  // Price/rate for the session
+  price?: number;  // Legacy: use 'sessionRate' instead
+
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   goals?: string[];
   notes?: string;
+  trainerNotes?: string;
   feedback?: {
     trainerNotes: string;
     traineeRating: number;
     traineeComment: string;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TraineeProfile {
@@ -56,19 +73,135 @@ export interface TraineeProfile {
   pastSessions: Session[];
 }
 
+// Helper to normalize session data (handles both old and new formats)
+function normalizeSession(session: any): Session {
+  return {
+    ...session,
+    // Ensure standard fields exist
+    type: session.type || session.sessionType || 'personal_training',
+    scheduledDate: session.scheduledDate || session.date || '',
+    startTime: session.startTime || session.time || '',
+    duration: session.duration || 60,
+    sessionRate: session.sessionRate ?? session.price ?? 0,
+    location: session.location || 'Studio',
+    title: session.title || `${session.type || session.sessionType || 'Training'} Session`,
+
+    // Keep legacy fields for backward compatibility
+    sessionType: session.sessionType || session.type,
+    date: session.date || session.scheduledDate,
+    time: session.time || session.startTime,
+    price: session.price ?? session.sessionRate ?? 0,
+  };
+}
+
 class SessionService {
   private readonly SESSIONS_KEY = 'user_sessions';
   private readonly TRAINEE_PROFILE_KEY = 'trainee_profile';
+  private readonly db = getFirestore();
 
-  async bookSession(sessionData: Omit<Session, 'id' | 'createdAt' | 'status'>): Promise<Session> {
+  async bookSession(sessionData: Omit<Session, 'id' | 'createdAt' | 'status' | 'updatedAt'>): Promise<Session> {
     try {
-      const newSession: Session = {
+      const now = new Date().toISOString();
+
+      // Ensure we have the required fields in the correct format
+      const normalizedSession = {
         ...sessionData,
-        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        status: 'scheduled',
-        createdAt: new Date().toISOString(),
+        // Use standard fields (web app compatible)
+        type: sessionData.type || sessionData.sessionType || 'personal_training',
+        scheduledDate: sessionData.scheduledDate || sessionData.date || '',
+        startTime: sessionData.startTime || sessionData.time || '',
+        duration: sessionData.duration || 60,
+        sessionRate: sessionData.sessionRate || sessionData.price || 0,
+        location: sessionData.location || 'Studio',
+        title: sessionData.title || `${sessionData.type || 'Training'} Session`,
+        description: sessionData.description || '',
+
+        // Keep legacy fields for backward compatibility
+        sessionType: sessionData.type || sessionData.sessionType,
+        date: sessionData.scheduledDate || sessionData.date,
+        time: sessionData.startTime || sessionData.time,
+        price: sessionData.sessionRate || sessionData.price,
       };
 
+      // VALIDATION: Check for scheduling conflicts with existing sessions
+      const conflicts = await this.checkForConflicts(
+        normalizedSession.trainerId,
+        normalizedSession.scheduledDate,
+        normalizedSession.startTime,
+        normalizedSession.duration
+      );
+
+      if (conflicts.length > 0) {
+        throw new Error(
+          `This time slot is already booked (${conflicts[0].startTime}). Please choose a different time.`
+        );
+      }
+
+      const newSession: Session = {
+        ...normalizedSession,
+        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        status: 'scheduled',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Save to Firestore with all fields
+      const sessionRef = doc(this.db, 'sessions', newSession.id);
+      await setDoc(sessionRef, newSession);
+
+      console.log('✅ Session saved to Firestore:', newSession.id);
+
+      // CREATE INVOICE AND TRANSACTION for payment tracking
+      try {
+        const sessionDateTime = new Date(`${normalizedSession.scheduledDate}T${normalizedSession.startTime}`);
+        const cancellationDeadline = new Date(sessionDateTime);
+        cancellationDeadline.setHours(cancellationDeadline.getHours() - 24);
+
+        const now = new Date().toISOString();
+
+        // Create invoice
+        const invoice = {
+          trainerId: normalizedSession.trainerId,
+          traineeId: normalizedSession.traineeId,
+          sessionId: newSession.id,
+          type: 'session',
+          amount: normalizedSession.sessionRate || 0,
+          description: `${normalizedSession.type} session on ${normalizedSession.scheduledDate} at ${normalizedSession.startTime}`,
+          billingDate: cancellationDeadline.toISOString(),
+          dueDate: normalizedSession.scheduledDate,
+          status: 'pending',
+          cancellationDeadline: cancellationDeadline.toISOString(),
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const invoiceRef = doc(collection(this.db, 'invoices'));
+        await setDoc(invoiceRef, invoice);
+
+        console.log('✅ Invoice created:', invoiceRef.id);
+
+        // Create transaction record
+        const transaction = {
+          trainerId: normalizedSession.trainerId,
+          traineeId: normalizedSession.traineeId,
+          type: 'charge',
+          amount: normalizedSession.sessionRate || 0,
+          sessionId: newSession.id,
+          invoiceId: invoiceRef.id,
+          description: invoice.description,
+          createdAt: now,
+        };
+
+        const transactionRef = doc(collection(this.db, 'transactions'));
+        await setDoc(transactionRef, transaction);
+
+        console.log('✅ Transaction created:', transactionRef.id);
+      } catch (paymentError) {
+        console.warn('⚠️ Session created but payment processing failed:', paymentError);
+        // Don't fail the session creation if payment processing fails
+      }
+
+      // Also save to AsyncStorage for offline access
       const existingSessions = await this.getUserSessions(sessionData.traineeId);
       const updatedSessions = [...existingSessions, newSession];
 
@@ -87,10 +220,93 @@ class SessionService {
     }
   }
 
+  // Check for scheduling conflicts
+  private async checkForConflicts(
+    trainerId: string,
+    date: string,
+    startTime: string,
+    duration: number
+  ): Promise<Session[]> {
+    try {
+      const sessionsCollection = collection(this.db, 'sessions');
+      const q = query(
+        sessionsCollection,
+        where('trainerId', '==', trainerId),
+        where('scheduledDate', '==', date)
+      );
+      const snapshot = await getDocs(q);
+
+      const conflicts: Session[] = [];
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const endTime = new Date();
+      endTime.setHours(startHour, startMinute + duration);
+      const endTimeStr = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+
+      snapshot.forEach((document) => {
+        const session = { id: document.id, ...document.data() } as Session;
+
+        // Skip cancelled or no_show sessions
+        if (session.status === 'cancelled' || session.status === 'no_show') {
+          return;
+        }
+
+        // Calculate session end time
+        const [sessStartHour, sessStartMinute] = session.startTime.split(':').map(Number);
+        const sessEndTime = new Date();
+        sessEndTime.setHours(sessStartHour, sessStartMinute + session.duration);
+        const sessEndTimeStr = `${sessEndTime.getHours().toString().padStart(2, '0')}:${sessEndTime.getMinutes().toString().padStart(2, '0')}`;
+
+        // Check for time overlap
+        if (
+          (startTime >= session.startTime && startTime < sessEndTimeStr) ||
+          (endTimeStr > session.startTime && endTimeStr <= sessEndTimeStr) ||
+          (startTime <= session.startTime && endTimeStr >= sessEndTimeStr)
+        ) {
+          conflicts.push(session);
+        }
+      });
+
+      return conflicts;
+    } catch (error) {
+      console.error('Error checking for conflicts:', error);
+      return []; // Return empty array on error to allow booking
+    }
+  }
+
   async getUserSessions(userId: string): Promise<Session[]> {
     try {
+      // First, try to fetch from Firestore (source of truth)
+      try {
+        const sessionsCollection = collection(this.db, 'sessions');
+        const q = query(sessionsCollection, where('traineeId', '==', userId));
+        const firestoreSessions = await getDocs(q);
+
+        if (!firestoreSessions.empty) {
+          const sessions = firestoreSessions.docs.map(document => {
+            const data = document.data();
+            return normalizeSession({ id: document.id, ...data });
+          });
+
+          // Cache in AsyncStorage for offline access
+          await AsyncStorage.setItem(
+            `${this.SESSIONS_KEY}_${userId}`,
+            JSON.stringify(sessions)
+          );
+
+          return sessions;
+        }
+      } catch (firestoreError) {
+        console.warn('Firestore fetch failed, falling back to AsyncStorage:', firestoreError);
+      }
+
+      // Fallback to AsyncStorage (offline mode)
       const sessionsData = await AsyncStorage.getItem(`${this.SESSIONS_KEY}_${userId}`);
-      return sessionsData ? JSON.parse(sessionsData) : [];
+      if (sessionsData) {
+        const sessions = JSON.parse(sessionsData);
+        return sessions.map(normalizeSession);
+      }
+
+      return [];
     } catch (error) {
       console.error('Error getting user sessions:', error);
       return [];

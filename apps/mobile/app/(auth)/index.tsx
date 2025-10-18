@@ -19,7 +19,8 @@ export default function AuthIndex() {
     return <Redirect href="/(tabs)/" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  // Phone auth is the primary method for trainees
+  return <Redirect href="/(auth)/phone-auth" />;
 }
 
 const styles = StyleSheet.create({

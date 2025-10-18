@@ -1,12 +1,16 @@
+export type AuthMethod = 'phone' | 'email' | 'google';
+
 export interface User {
   uid: string;
   email: string | null;
+  phoneNumber: string | null;
   displayName: string | null;
   photoURL: string | null;
   emailVerified: boolean;
   createdAt: string;
   lastLoginAt: string;
   role: UserRole;
+  authMethod: AuthMethod;
   profile: UserProfile;
 }
 
@@ -32,7 +36,7 @@ export interface UserPreferences {
 }
 
 
-export type UserRole = 'user' | 'trainer' | 'admin';
+export type UserRole = 'trainee' | 'trainer' | 'admin';
 
 export interface AuthState {
   user: User | null;
@@ -53,4 +57,17 @@ export interface SignupCredentials extends LoginCredentials {
 
 export interface ResetPasswordRequest {
   email: string;
+}
+
+// Phone Authentication
+export interface PhoneAuthCredentials {
+  phoneNumber: string;
+  verificationCode: string;
+}
+
+export interface PhoneSignupCredentials {
+  phoneNumber: string;
+  verificationCode: string;
+  firstName: string;
+  lastName: string;
 }

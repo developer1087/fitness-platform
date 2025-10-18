@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
   };
 
   const handleBackToLogin = () => {
-    router.back();
+    router.push('/(auth)/phone-auth');
   };
 
   return (

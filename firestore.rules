@@ -12,10 +12,18 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
     }
 
-    // Trainees - trainers can manage their own trainees
+    // Trainees - trainers can manage their own trainees, trainees can read their own data
     match /trainees/{traineeId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.userId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+    }
+
+    // Trainers - trainers can read/write their own data, trainees can read their trainer's data
+    match /trainers/{trainerId} {
+      allow read: if request.auth != null; // Any authenticated user can read trainer profiles
+      allow write: if request.auth != null && request.auth.uid == trainerId;
     }
 
     // Workouts - users can manage their own workouts
@@ -26,10 +34,136 @@ service cloud.firestore {
 
     // Sessions - trainers can manage sessions for their trainees, trainees can read their own
     match /sessions/{sessionId} {
-      allow read, write: if request.auth != null &&
+      // Allow reading individual documents
+      allow get: if request.auth != null &&
+        (resource.data.trainerId == request.auth.uid || resource.data.traineeId == request.auth.uid);
+      // Allow queries/list operations (needed for conflict checking and viewing sessions)
+      // Any authenticated user can query sessions (e.g., trainees checking trainer availability)
+      allow list: if request.auth != null;
+      // Allow write operations
+      allow write: if request.auth != null &&
+        (resource.data.trainerId == request.auth.uid || resource.data.traineeId == request.auth.uid);
+      // Allow create operations
+      allow create: if request.auth != null &&
+        (request.resource.data.trainerId == request.auth.uid || request.resource.data.traineeId == request.auth.uid);
+    }
+
+    // Availability Slots - trainers can manage their own availability
+    match /availability_slots/{slotId} {
+      allow read: if request.auth != null; // Anyone authenticated can view availability
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Booking Slots - trainers manage their slots, trainees can read to book
+    match /booking_slots/{bookingId} {
+      allow read: if request.auth != null; // Anyone authenticated can view booking slots
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId ||
+         request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId ||
+         request.auth.uid == request.resource.data.traineeId);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Recurring Bookings - trainers manage their recurring patterns
+    match /recurring_bookings/{recurringId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Calendar Settings - trainers manage their own calendar settings
+    match /calendar_settings/{trainerId} {
+      allow read: if request.auth != null; // Anyone can view calendar settings
+      allow write: if request.auth != null && request.auth.uid == trainerId;
+    }
+
+    // Session Templates - trainers manage their own templates
+    match /session_templates/{templateId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Personal Records - trainers can manage, trainees can read their own
+    match /personal_records/{recordId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+    }
+
+    // Messages - users can read and write their own conversations
+    match /messages/{messageId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
+    }
+
+    // Conversations - users can read their own conversations
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null &&
         (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
       allow create: if request.auth != null &&
         (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+    }
+
+    // Packages - trainers can manage their packages, trainees can read to purchase
+    match /packages/{packageId} {
+      allow read: if request.auth != null; // Anyone authenticated can view packages
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.trainerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Trainee Packages - trainers and trainees can read their own package purchases
+    match /trainee_packages/{traineePackageId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+    }
+
+    // Invoices - trainers can manage their invoices, trainees can read their own and create when booking
+    match /invoices/{invoiceId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+    }
+
+    // Payments - trainers can create/view their payments, trainees can view and create their own
+    match /payments/{paymentId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null &&
+        (request.auth.uid == request.resource.data.trainerId || request.auth.uid == request.resource.data.traineeId);
+      allow update: if request.auth != null && request.auth.uid == resource.data.trainerId;
+    }
+
+    // Payment Accounts - trainers manage their own payment account settings
+    match /payment_accounts/{trainerId} {
+      allow read, write: if request.auth != null && request.auth.uid == trainerId;
+    }
+
+    // Transactions - trainers and trainees can read their own transactions
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.trainerId || request.auth.uid == resource.data.traineeId);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.trainerId;
     }
 
     // Default deny all other documents

@@ -5,14 +5,15 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
+  Alert,
+  Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
 import { router } from 'expo-router';
 import { LogWorkoutModal } from '../../components/workouts/LogWorkoutModal';
 import { LiveWorkoutScreen } from '../../components/workouts/LiveWorkoutScreen';
 import { BookSessionModal } from '../../components/sessions/BookSessionModal';
-import { TrainerDashboard } from '../../components/trainer/TrainerDashboard';
 import { ConversationsList } from '../../components/messaging/ConversationsList';
 import { MessageNotificationBadge } from '../../components/messaging/MessageNotificationBadge';
 import { workoutService } from '../../lib/workouts';
@@ -24,7 +25,6 @@ export default function HomeScreen() {
   const [showLogWorkoutModal, setShowLogWorkoutModal] = useState(false);
   const [showLiveWorkout, setShowLiveWorkout] = useState(false);
   const [showBookSessionModal, setShowBookSessionModal] = useState(false);
-  const [showTrainerDashboard, setShowTrainerDashboard] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [todayStats, setTodayStats] = useState({
@@ -69,10 +69,10 @@ export default function HomeScreen() {
       const upcoming = sessions
         .filter(session =>
           session.status === 'scheduled' &&
-          session.date >= todayDate
+          session.scheduledDate >= todayDate
         )
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 3); // Show only next 3 sessions
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+        .slice(0, 10); // Show next 10 sessions
       setUpcomingSessions(upcoming);
     } catch (error) {
       console.error('Error loading upcoming sessions:', error);
@@ -113,6 +113,83 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      console.log('🚪 Signing out...');
+      await signOut();
+      console.log('✅ Sign out successful');
+      // Navigation to auth screen will happen automatically via auth state change
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      // You could show an alert here if needed
+    }
+  };
+
+  const handleJoinSession = async (session: any) => {
+    const sessionDate = new Date(session.scheduledDate);
+    const sessionDateStr = sessionDate.toLocaleDateString();
+
+    // Check if this is a remote session with a meeting link
+    if (session.meetingLink && (session.sessionFormat === 'remote' || session.sessionFormat === 'hybrid')) {
+      try {
+        // Try to open the meeting link
+        const canOpen = await Linking.canOpenURL(session.meetingLink);
+
+        if (canOpen) {
+          Alert.alert(
+            'Join Remote Session',
+            `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
+            `Date: ${sessionDateStr} at ${session.startTime}\n\n` +
+            `Opening video call link...`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Join Call',
+                onPress: async () => {
+                  await Linking.openURL(session.meetingLink);
+                  console.log('📹 Opened meeting link:', session.meetingLink);
+                }
+              }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Invalid Link',
+            'The meeting link for this session appears to be invalid. Please contact your trainer.',
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening meeting link:', error);
+        Alert.alert(
+          'Error',
+          'Could not open the meeting link. Please try again or contact your trainer.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } else {
+      // In-person session - show session details
+      Alert.alert(
+        'Session Details',
+        `Session: ${session.title || session.type?.replace('_', ' ') || 'Training Session'}\n` +
+        `Date: ${sessionDateStr} at ${session.startTime}\n` +
+        `Duration: ${session.duration} minutes\n` +
+        `Location: ${session.location || 'Not specified'}\n\n` +
+        (session.sessionFormat === 'in_person'
+          ? 'This is an in-person session. See you at the location!'
+          : 'This session doesn\'t have a video call link yet.'),
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    }
+
+    console.log('📹 Join session pressed:', session.id);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -130,7 +207,7 @@ export default function HomeScreen() {
               <Text style={styles.messageIcon}>💬</Text>
               <MessageNotificationBadge userType="trainee" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={signOut} style={styles.signOutButton}>
+            <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
@@ -183,13 +260,16 @@ export default function HomeScreen() {
             upcomingSessions.map((session) => (
               <View key={session.id} style={styles.workoutCard}>
                 <View style={styles.workoutInfo}>
-                  <Text style={styles.workoutTitle}>{session.sessionType}</Text>
-                  <Text style={styles.workoutTrainer}>with {session.trainerName}</Text>
+                  <Text style={styles.workoutTitle}>{session.title || session.type?.replace('_', ' ') || 'Training Session'}</Text>
+                  <Text style={styles.workoutTrainer}>with {session.trainerName || 'Your Trainer'}</Text>
                   <Text style={styles.workoutTime}>
-                    {new Date(session.date).toLocaleDateString()} at {session.time} • {session.duration} min
+                    {new Date(session.scheduledDate).toLocaleDateString()} at {session.startTime} • {session.duration} min
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.joinButton}>
+                <TouchableOpacity
+                  style={styles.joinButton}
+                  onPress={() => handleJoinSession(session)}
+                >
                   <Text style={styles.joinButtonText}>Join</Text>
                 </TouchableOpacity>
               </View>
@@ -209,19 +289,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Demo Section */}
-        <View style={styles.demoContainer}>
-          <Text style={styles.demoTitle}>🔍 Demo: Trainer View</Text>
-          <Text style={styles.demoDescription}>
-            See how trainers can view all trainee data, workouts, and progress in real-time
-          </Text>
-          <TouchableOpacity
-            style={styles.demoButton}
-            onPress={() => setShowTrainerDashboard(true)}
-          >
-            <Text style={styles.demoButtonText}>View Trainer Dashboard</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Motivation Quote */}
         <View style={styles.motivationContainer}>
@@ -267,12 +334,6 @@ export default function HomeScreen() {
           setShowBookSessionModal(false);
           loadUpcomingSessions(); // Refresh sessions list
         }}
-      />
-
-      {/* Trainer Dashboard */}
-      <TrainerDashboard
-        visible={showTrainerDashboard}
-        onClose={() => setShowTrainerDashboard(false)}
       />
 
       {/* Messages */}

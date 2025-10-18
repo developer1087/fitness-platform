@@ -8,9 +8,11 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { sessionService } from '../../lib/sessions';
+import TraineeService from '../../lib/traineeService';
 
 interface Trainer {
   id: string;
@@ -41,55 +43,105 @@ export function BookSessionModal({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [sessionType, setSessionType] = useState<'personal' | 'group'>('personal');
+  const [sessionFormat, setSessionFormat] = useState<'in_person' | 'remote' | 'hybrid'>('in_person');
+  const [meetingLink, setMeetingLink] = useState<string>('');
   const [sessionGoal, setSessionGoal] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [step, setStep] = useState<'trainers' | 'schedule' | 'details' | 'confirm'>('trainers');
+  const [loading, setLoading] = useState(false);
+  const [trainer, setTrainer] = useState<any>(null);
 
-  // Mock trainers data - in real app this would come from API
-  const trainers: Trainer[] = [
-    {
-      id: 'trainer1',
-      name: 'Sarah Johnson',
-      specialties: ['Strength Training', 'Weight Loss', 'HIIT'],
-      rating: 4.9,
-      experience: '5+ years',
-      avatar: '💪',
-      pricePerHour: 75,
-      availability: {
-        [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
-        [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
-        [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+  // Fetch the trainee's trainer
+  useEffect(() => {
+    if (visible && user?.uid) {
+      loadTrainer();
+    }
+  }, [visible, user]);
+
+  const loadTrainer = async () => {
+    try {
+      setLoading(true);
+      const trainerData = await TraineeService.getTrainerByUserId(user?.uid || '');
+      if (trainerData) {
+        setTrainer(trainerData);
+        // Auto-select this trainer
+        const trainerWithAvailability: Trainer = {
+          id: trainerData.id,
+          name: `${trainerData.firstName} ${trainerData.lastName}`,
+          specialties: ['Personal Training'], // You can enhance this later
+          rating: 5.0,
+          experience: 'Certified Trainer',
+          avatar: '💪',
+          pricePerHour: 100,
+          availability: {
+            [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+            [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
+            [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+          },
+        };
+        setSelectedTrainer(trainerWithAvailability);
+      }
+    } catch (error) {
+      console.error('Error loading trainer:', error);
+      Alert.alert('Error', 'Failed to load trainer information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get trainers list - either the real trainer or demo data
+  const getTrainersList = (): Trainer[] => {
+    // If real trainer is loaded, show only the real trainer
+    if (selectedTrainer && trainer) {
+      return [selectedTrainer];
+    }
+
+    // Fallback to demo trainers if no real trainer found
+    return [
+      {
+        id: 'trainer1',
+        name: 'Sarah Johnson',
+        specialties: ['Strength Training', 'Weight Loss', 'HIIT'],
+        rating: 4.9,
+        experience: '5+ years',
+        avatar: '💪',
+        pricePerHour: 75,
+        availability: {
+          [getDateString(0)]: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+          [getDateString(1)]: ['08:00', '09:00', '13:00', '14:00', '17:00'],
+          [getDateString(2)]: ['10:00', '11:00', '15:00', '16:00'],
+        },
       },
-    },
-    {
-      id: 'trainer2',
-      name: 'Mike Chen',
-      specialties: ['Cardio', 'Endurance', 'Running'],
-      rating: 4.8,
-      experience: '7+ years',
-      avatar: '🏃‍♂️',
-      pricePerHour: 80,
-      availability: {
-        [getDateString(0)]: ['08:00', '11:00', '13:00', '17:00'],
-        [getDateString(1)]: ['09:00', '10:00', '15:00', '16:00', '18:00'],
-        [getDateString(2)]: ['08:00', '12:00', '14:00', '16:00'],
+      {
+        id: 'trainer2',
+        name: 'Mike Chen',
+        specialties: ['Cardio', 'Endurance', 'Running'],
+        rating: 4.8,
+        experience: '7+ years',
+        avatar: '🏃‍♂️',
+        pricePerHour: 80,
+        availability: {
+          [getDateString(0)]: ['08:00', '11:00', '13:00', '17:00'],
+          [getDateString(1)]: ['09:00', '10:00', '15:00', '16:00', '18:00'],
+          [getDateString(2)]: ['08:00', '12:00', '14:00', '16:00'],
+        },
       },
-    },
-    {
-      id: 'trainer3',
-      name: 'Emma Wilson',
-      specialties: ['Yoga', 'Flexibility', 'Mindfulness'],
-      rating: 5.0,
-      experience: '4+ years',
-      avatar: '🧘‍♀️',
-      pricePerHour: 70,
-      availability: {
-        [getDateString(0)]: ['07:00', '12:00', '16:00', '18:00'],
-        [getDateString(1)]: ['08:00', '11:00', '14:00', '17:00'],
-        [getDateString(2)]: ['09:00', '13:00', '15:00', '19:00'],
+      {
+        id: 'trainer3',
+        name: 'Emma Wilson',
+        specialties: ['Yoga', 'Flexibility', 'Mindfulness'],
+        rating: 5.0,
+        experience: '4+ years',
+        avatar: '🧘‍♀️',
+        pricePerHour: 70,
+        availability: {
+          [getDateString(0)]: ['07:00', '12:00', '16:00', '18:00'],
+          [getDateString(1)]: ['08:00', '11:00', '14:00', '17:00'],
+          [getDateString(2)]: ['09:00', '13:00', '15:00', '19:00'],
+        },
       },
-    },
-  ];
+    ];
+  };
 
   function getDateString(daysFromNow: number): string {
     const date = new Date();
@@ -143,11 +195,21 @@ export function BookSessionModal({
         traineeId: user?.uid || 'demo',
         trainerId: selectedTrainer.id,
         trainerName: selectedTrainer.name,
+        // New standard fields (required)
+        type: sessionType === 'personal' ? 'personal_training' : 'group_training',
+        scheduledDate: selectedDate,
+        startTime: selectedTime,
+        duration: 60, // Default 60 minutes
+        sessionRate: selectedTrainer.pricePerHour,
+        // Session format and meeting link
+        sessionFormat,
+        meetingLink: (sessionFormat === 'remote' || sessionFormat === 'hybrid') ? meetingLink : undefined,
+        // Legacy fields (for backward compatibility)
         sessionType: sessionGoal || sessionType,
         date: selectedDate,
         time: selectedTime,
-        duration: 60, // Default 60 minutes
         price: selectedTrainer.pricePerHour,
+        // Additional fields
         goals: sessionGoal ? [sessionGoal] : [],
         notes,
       };
@@ -176,20 +238,25 @@ export function BookSessionModal({
   };
 
   const resetForm = () => {
-    setSelectedTrainer(null);
     setSelectedDate('');
     setSelectedTime('');
     setSessionType('personal');
+    setSessionFormat('in_person');
+    setMeetingLink('');
     setSessionGoal('');
     setNotes('');
     setStep('trainers');
+    // Don't reset selectedTrainer - keep the real trainer selected
   };
 
   const renderTrainerStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Choose Your Trainer</Text>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {trainers.map(trainer => (
+      {loading ? (
+        <ActivityIndicator size="large" color="#2563EB" />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {getTrainersList().map(trainer => (
           <TouchableOpacity
             key={trainer.id}
             style={[
@@ -218,8 +285,9 @@ export function BookSessionModal({
               ))}
             </View>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -318,6 +386,74 @@ export function BookSessionModal({
         </TouchableOpacity>
       </View>
 
+      {/* Session Format */}
+      <Text style={styles.sectionLabel}>Session Format</Text>
+      <View style={styles.sessionFormatContainer}>
+        <TouchableOpacity
+          style={[
+            styles.sessionFormatButton,
+            sessionFormat === 'in_person' && styles.sessionFormatButtonSelected,
+          ]}
+          onPress={() => setSessionFormat('in_person')}
+        >
+          <Text style={[
+            styles.sessionFormatText,
+            sessionFormat === 'in_person' && styles.sessionFormatTextSelected,
+          ]}>
+            In-Person
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.sessionFormatButton,
+            sessionFormat === 'remote' && styles.sessionFormatButtonSelected,
+          ]}
+          onPress={() => setSessionFormat('remote')}
+        >
+          <Text style={[
+            styles.sessionFormatText,
+            sessionFormat === 'remote' && styles.sessionFormatTextSelected,
+          ]}>
+            Remote
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.sessionFormatButton,
+            sessionFormat === 'hybrid' && styles.sessionFormatButtonSelected,
+          ]}
+          onPress={() => setSessionFormat('hybrid')}
+        >
+          <Text style={[
+            styles.sessionFormatText,
+            sessionFormat === 'hybrid' && styles.sessionFormatTextSelected,
+          ]}>
+            Hybrid
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Meeting Link for Remote/Hybrid Sessions */}
+      {(sessionFormat === 'remote' || sessionFormat === 'hybrid') && (
+        <>
+          <Text style={styles.sectionLabel}>
+            Meeting Link <Text style={styles.requiredText}>(required)</Text>
+          </Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="e.g., https://zoom.us/j/123... or https://meet.google.com/..."
+            placeholderTextColor="#9CA3AF"
+            value={meetingLink}
+            onChangeText={setMeetingLink}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+        </>
+      )}
+
       {/* Session Goal */}
       <Text style={styles.sectionLabel}>What's your goal for this session?</Text>
       <TextInput
@@ -370,6 +506,22 @@ export function BookSessionModal({
         </View>
 
         <View style={styles.confirmationRow}>
+          <Text style={styles.confirmationLabel}>Format:</Text>
+          <Text style={styles.confirmationValue}>
+            {sessionFormat === 'in_person' ? 'In-Person' : sessionFormat === 'remote' ? 'Remote (Video Call)' : 'Hybrid'}
+          </Text>
+        </View>
+
+        {(sessionFormat === 'remote' || sessionFormat === 'hybrid') && meetingLink && (
+          <View style={styles.confirmationRow}>
+            <Text style={styles.confirmationLabel}>Meeting Link:</Text>
+            <Text style={[styles.confirmationValue, styles.linkText]} numberOfLines={1}>
+              {meetingLink}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.confirmationRow}>
           <Text style={styles.confirmationLabel}>Price:</Text>
           <Text style={styles.confirmationPrice}>${selectedTrainer?.pricePerHour}</Text>
         </View>
@@ -398,7 +550,15 @@ export function BookSessionModal({
     switch (step) {
       case 'trainers': return selectedTrainer !== null;
       case 'schedule': return selectedDate && selectedTime;
-      case 'details': return sessionGoal.trim().length > 0;
+      case 'details': {
+        // Require session goal
+        if (sessionGoal.trim().length === 0) return false;
+        // Require meeting link for remote/hybrid sessions
+        if ((sessionFormat === 'remote' || sessionFormat === 'hybrid') && !meetingLink.trim()) {
+          return false;
+        }
+        return true;
+      }
       case 'confirm': return true;
       default: return false;
     }
@@ -683,6 +843,40 @@ const styles = StyleSheet.create({
   },
   sessionTypeTextSelected: {
     color: '#FFFFFF',
+  },
+  sessionFormatContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  sessionFormatButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  sessionFormatButtonSelected: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  sessionFormatText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  sessionFormatTextSelected: {
+    color: '#FFFFFF',
+  },
+  requiredText: {
+    color: '#2563EB',
+    fontSize: 14,
+  },
+  linkText: {
+    fontSize: 12,
+    color: '#2563EB',
   },
   textInput: {
     backgroundColor: '#FFFFFF',

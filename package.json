@@ -1,4 +1,17 @@
 {
+  "name": "@fitness-platform/root",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "cd apps/web && npm run build",
+    "dev": "cd apps/web && npm run dev",
+    "install-all": "npm install && npm run install-workspaces",
+    "install-workspaces": "npm install --workspaces"
+  },
   "dependencies": {
     "dotenv": "^17.2.2",
     "nodemailer": "^7.0.6"
