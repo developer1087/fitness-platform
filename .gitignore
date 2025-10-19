@@ -222,3 +222,4 @@ dist/
 *.tgz
 *.tar.gz
 
+apps/mobile/*.apk

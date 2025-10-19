@@ -59,9 +59,15 @@ export function BookSessionModal({
   }, [visible, user]);
 
   const loadTrainer = async () => {
+    // Don't load if no user is authenticated
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const trainerData = await TraineeService.getTrainerByUserId(user?.uid || '');
+      const trainerData = await TraineeService.getTrainerByUserId(user.uid);
       if (trainerData) {
         setTrainer(trainerData);
         // Auto-select this trainer
@@ -169,6 +175,11 @@ export function BookSessionModal({
   };
 
   const handleBookSession = async () => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'Please sign in to book a session.');
+      return;
+    }
+
     if (!selectedTrainer || !selectedDate || !selectedTime) {
       Alert.alert('Error', 'Please select a trainer, date, and time.');
       return;
@@ -176,7 +187,7 @@ export function BookSessionModal({
 
     const booking = {
       id: Date.now().toString(),
-      traineeId: user?.uid || 'demo',
+      traineeId: user.uid,
       trainerId: selectedTrainer.id,
       trainerName: selectedTrainer.name,
       date: selectedDate,
@@ -192,7 +203,7 @@ export function BookSessionModal({
     try {
       // Save session using session service
       const sessionData = {
-        traineeId: user?.uid || 'demo',
+        traineeId: user.uid,
         trainerId: selectedTrainer.id,
         trainerName: selectedTrainer.name,
         // New standard fields (required)
