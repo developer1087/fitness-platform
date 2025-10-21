@@ -9,7 +9,7 @@ Thank you for helping test the Ryzup Fitness mobile app!
 ## Test Account Credentials
 
 **Email:** `test@ryzup.me`
-**Password:** `[Password provided separately]`
+**Password:** `avivAA87`
 
 ⚠️ **Keep these credentials confidential** - they are for testing purposes only.
 
