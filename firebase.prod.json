@@ -3,7 +3,7 @@
     "default": "fitness-platform-prod"
   },
   "hosting": {
-    "public": "apps/web/.next",
+    "public": "apps/mobile/web-build",
     "ignore": [
       "firebase.json",
       "**/.*",

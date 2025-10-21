@@ -123,11 +123,26 @@ export class AuthService {
 
   static async signOut(): Promise<void> {
     try {
-      console.log('🚪 Signing out from Firebase');
+      const currentUser = this.auth.currentUser;
+      console.log('🚪 Signing out from Firebase. Current user:', currentUser?.uid || 'none');
+
+      if (!currentUser) {
+        console.log('⚠️ No user currently signed in, but calling signOut anyway');
+      }
+
       await firebaseSignOut(this.auth);
       console.log('✅ Firebase sign out successful');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Firebase sign out error:', error);
+      console.error('❌ Error code:', error?.code);
+      console.error('❌ Error message:', error?.message);
+
+      // Don't throw error if user is already signed out
+      if (error?.code === 'auth/no-current-user') {
+        console.log('ℹ️ User was already signed out, ignoring error');
+        return;
+      }
+
       throw error;
     }
   }

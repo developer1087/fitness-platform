@@ -41,8 +41,11 @@ async function testEmailService() {
       process.exit(1);
     }
 
-    // Dynamic import to ensure environment is loaded
-    const { ProductionEmailService } = await import('../apps/web/src/lib/productionEmailService.ts');
+    // Email service is now in the web app repository (fitness-platform-web)
+    console.log('❌ Email service is not available in this mobile-only repository');
+    console.log('🌐 Email service is located in: fitness-platform-web repository');
+    console.log('📧 Please run email tests from the web app repository');
+    process.exit(1);
 
     console.log('📧 Email Provider:', process.env.EMAIL_PROVIDER);
     console.log('📨 From Name:', process.env.FROM_NAME);

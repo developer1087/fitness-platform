@@ -22,11 +22,18 @@ export function MessageNotificationBadge({ userType, style }: MessageNotificatio
   }, [user]);
 
   const loadUnreadCount = async () => {
+    // Don't query if user is not authenticated
+    if (!user?.uid) {
+      setUnreadCount(0);
+      return;
+    }
+
     try {
-      const count = await messagingService.getTotalUnreadCount(user?.uid || 'demo');
+      const count = await messagingService.getTotalUnreadCount(user.uid);
       setUnreadCount(count);
     } catch (error) {
       console.error('Error loading unread count:', error);
+      setUnreadCount(0);
     }
   };
 

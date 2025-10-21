@@ -18,16 +18,13 @@ echo "📋 Copied development configurations"
 echo "📦 Installing dependencies..."
 npm install
 
-# Build web app for development
-echo "🏗️  Building web application..."
-cd apps/web
-npm run build
-cd ../..
-
-# Start Firebase emulators
-echo "🔥 Starting Firebase emulators..."
-firebase emulators:start --project fitness-platform-dev
-
-echo "✅ Development environment ready!"
-echo "🌐 Web UI: http://localhost:3000"
-echo "🔥 Firebase UI: http://localhost:4000"
+# Mobile app development - this repo is mobile-only
+echo "📱 This is a mobile-only repository"
+echo "🌐 Web app development: fitness-platform-web repo"
+echo "🌐 Landing page development: fitness-platform-landing repo"
+echo ""
+echo "📱 For mobile app development, use:"
+echo "   cd apps/mobile"
+echo "   npx expo start"
+echo ""
+echo "✅ Mobile development environment ready!"
