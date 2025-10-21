@@ -114,15 +114,35 @@ export default function HomeScreen() {
   };
 
   const handleSignOut = async () => {
-    try {
-      console.log('🚪 Signing out...');
-      await signOut();
-      console.log('✅ Sign out successful');
-      // Navigation to auth screen will happen automatically via auth state change
-    } catch (error) {
-      console.error('❌ Sign out error:', error);
-      // You could show an alert here if needed
-    }
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🚪 User confirmed sign out, processing...');
+              await signOut();
+              console.log('✅ Sign out successful, auth state will update automatically');
+              // Navigation to auth screen will happen automatically via auth state change
+            } catch (error: any) {
+              console.error('❌ Sign out error:', error);
+              Alert.alert(
+                'Sign Out Error',
+                error?.message || 'Failed to sign out. Please try again.',
+                [{ text: 'OK', style: 'default' }]
+              );
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleJoinSession = async (session: any) => {
