@@ -60,8 +60,8 @@ A comprehensive fitness training management system with **three separate applica
 - **Deploy:** Vercel (auto-deploy on push to main)
 
 ### 3. Mobile App (Trainee App)
-- **Repo:** `Fitness Platform` (THIS REPOSITORY - mobile-only)
-- **Location:** `/Users/avi/Desktop/Fitness Platform/apps/mobile`
+- **Repo:** `fitness-platform-mobile-app` (THIS REPOSITORY - mobile-only)
+- **Location:** `/Users/avi/Desktop/fitness-platform-mobile-app`
 - **Branch:** `develop`
 - **Deploy:** EAS Build → Google Play Store
 - **Package:** `com.ryzup.fitness`
@@ -70,20 +70,31 @@ A comprehensive fitness training management system with **three separate applica
 
 ## Current Project Structure (Mobile-Only Repository)
 ```
-Fitness Platform/
-├── apps/
-│   └── mobile/           # React Native trainee app
-├── CLAUDE.md            # This file
-├── SYSTEM_OVERVIEW.md   # Comprehensive system documentation
-├── GOOGLE_PLAY_TESTING.md  # Testing guide for testers
-└── packages/            # Shared utilities (minimal use)
+fitness-platform-mobile-app/
+├── android/              # Android native code
+├── app/                  # Expo Router app directory
+├── assets/               # Images, fonts, etc.
+├── components/           # Reusable React components
+├── constants/            # App constants
+├── hooks/                # Custom React hooks
+├── lib/                  # Services, utilities, Firebase config
+├── docs/                 # Documentation files
+├── packages/             # Shared types package
+│   └── shared-types/
+├── scripts/              # Build and utility scripts
+├── app.json              # Expo configuration
+├── eas.json              # EAS Build configuration
+├── package.json          # Dependencies
+├── tsconfig.json         # TypeScript configuration
+├── firebase.json         # Firebase configuration
+└── CLAUDE.md             # This file
 ```
 
 ## Key Commands
 
 ### Mobile App
 ```bash
-cd "/Users/avi/Desktop/Fitness Platform/apps/mobile"
+cd /Users/avi/Desktop/fitness-platform-mobile-app
 npx expo start                      # Start development server
 npx expo-doctor                     # Validate configuration
 eas build --platform android --profile preview      # Build APK
