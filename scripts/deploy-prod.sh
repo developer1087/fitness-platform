@@ -37,15 +37,13 @@ npm ci --production
 echo "🧪 Running tests..."
 npm run test
 
-# Build web app for production
-echo "🏗️  Building web application..."
-cd apps/web
-npm run build
-cd ../..
-
-# Deploy to Firebase
-echo "☁️  Deploying to Firebase..."
-firebase deploy --project fitness-platform-prod
-
-echo "✅ Production deployment complete!"
-echo "🌐 Live URL: https://fitness-platform-prod.firebaseapp.com"
+# Mobile app deployment - this repo is mobile-only
+echo "📱 This is a mobile-only repository"
+echo "🌐 Web app is deployed from: fitness-platform-web repo (Vercel)"
+echo "🌐 Landing page is deployed from: fitness-platform-landing repo (Vercel)"
+echo ""
+echo "📱 For mobile app builds, use:"
+echo "   cd apps/mobile"
+echo "   npx expo run:android --variant release"
+echo ""
+echo "✅ Mobile repository check complete!"

@@ -114,9 +114,8 @@ node scripts/test-email.js
 
 ### Method 3: Configuration Check
 ```javascript
-// In browser console or Node.js
-const { ProductionEmailService } = require('./apps/web/src/lib/productionEmailService');
-console.log(ProductionEmailService.getConfigInfo());
+// Email service is now in the web app repository (fitness-platform-web)
+// Please run this from the fitness-platform-web repository
 ```
 
 ---

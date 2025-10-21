@@ -21,16 +21,11 @@ jobs:
         cache: 'npm'
         cache-dependency-path: |
           package-lock.json
-          apps/web/package-lock.json
+          apps/mobile/package-lock.json
           packages/shared-types/package-lock.json
 
     - name: Install dependencies
       run: npm ci
-
-    - name: Install web dependencies
-      run: |
-        cd apps/web
-        npm ci
 
     - name: Install mobile dependencies
       run: |
