@@ -466,7 +466,7 @@ export function BookSessionModal({
       )}
 
       {/* Session Goal */}
-      <Text style={styles.sectionLabel}>What's your goal for this session?</Text>
+      <Text style={styles.sectionLabel}>What&apos;s your goal for this session?</Text>
       <TextInput
         style={styles.textInput}
         placeholder="e.g., Weight loss, strength building, technique improvement..."

@@ -235,7 +235,7 @@ export default function HomeScreen() {
 
         {/* Today's Stats */}
         <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Today's Progress</Text>
+          <Text style={styles.sectionTitle}>Today&apos;s Progress</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{todayStats.workoutsCompleted}</Text>
@@ -313,7 +313,7 @@ export default function HomeScreen() {
         {/* Motivation Quote */}
         <View style={styles.motivationContainer}>
           <Text style={styles.motivationQuote}>
-            "The only bad workout is the one that didn't happen."
+            &quot;The only bad workout is the one that didn&apos;t happen.&quot;
           </Text>
           <Text style={styles.motivationAuthor}>- Unknown</Text>
         </View>
